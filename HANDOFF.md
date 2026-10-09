@@ -1,0 +1,344 @@
+# SALUS Online — Handoff Notes (read this first)
+
+_Last updated: 2026-10-09 · Owner: Basso Lab, Michigan State University · Contact: taddeucc@msu.edu_
+
+This file is the single source of truth for any agent or developer picking up the
+SALUS Online front-end. Read it fully before changing code. Update the
+"Current status" and "Changelog" sections when you finish a piece of work.
+
+---
+
+## 1. What this is
+
+A React + TypeScript rebuild of the **SALUS Online** website (the SALUS crop model
+run over the web), with the old **NShow** nitrogen/water visualisation folded in as
+the **Selected Field Results** page.
+
+- Brand: **SALUS Online** only. Do **not** reintroduce "NShow" branding in the UI.
+- Look: MSU "Spartan White" (see §4). The user approved this as the starting point.
+- Status: working front-end prototype with **mocked runs** and **mock sample results** (invented numbers; no real SALUS output in this repo). No backend yet.
+
+### Where things live
+
+| What | Location |
+|---|---|
+| Code (canonical) | `~/Desktop/ClaudeProjects/NSHow/Claude outputs/salus-online/` |
+| Zip snapshot | `…/Claude outputs/salus-online.zip` |
+| **Standalone (double-click) build** | `…/Claude outputs/salus-online-standalone/` (see its `STANDALONE.md`); shareable zip `…/salus-online-standalone/release/SALUS-Online.zip` (also `…/Claude outputs/SALUS-Online-standalone.zip`) |
+| This file | `salus-online/HANDOFF.md` + project doc `claude/salus-online-handoff.md` |
+| Full source snapshot | project doc `claude/salus-online-source-snapshot.md` |
+| Live-site screenshots (what we're replacing) | `…/Claude outputs/SalusOnlineScreenshots/` |
+| Original Flutter/Dart prototypes | `NSHow/NShow_Dart.tar.gz`, `NSHow/NShow_Dart_Flutter.tar.gz` |
+| Original NShow plot (matplotlib) | `NSHow/NSHow.png` |
+| Superseded work — ignore | `Claude outputs/nshow-react*`, `nshow-redesign-concepts.pptx`, `_to_delete_frames/` |
+
+Upstream docs (MSU GitLab): `bassolab/salus/salus-documentation` → `Latex/NShow`
+(NShowDevDoc.pdf, DSSAT 3.5 vol 4, old Turbo Pascal code). C++ start:
+`bassolab/salus/SalusModel` → `projects/NShow_CPP`.
+
+---
+
+## 2. Run it
+
+```bash
+cd salus-online
+npm install
+npm run dev         # http://localhost:5173
+npm run typecheck   # tsc --noEmit (strict mode, must stay clean)
+npm run build       # typecheck + vite build → dist/
+```
+
+Optional `.env` (copy `.env.example`): `VITE_MAPTILER_KEY=...` switches the map to
+MapTiler styles. Without it, basemaps are keyless (Esri World Imagery + OpenFreeMap).
+
+---
+
+## 3. Tech stack (user-mandated choices — keep them)
+
+| Concern | Library | Notes |
+|---|---|---|
+| Build | Vite 8, TypeScript 7 (strict) | `tsconfig.json` has `noUnusedLocals/Parameters` |
+| UI, inputs, forms | `@mui/material` v9, `@mui/icons-material` v9 | All form controls are MUI |
+| Data grids | `@mui/x-data-grid` v9 (free MIT tier) | Do not use Pro/Premium features |
+| Charts | `@mui/x-charts` v9 (MIT) + one hand-drawn SVG | |
+| Map | `maplibre-gl` v6 + `react-map-gl/maplibre` v8 | Free/open source, per user |
+| Routing | `react-router-dom` v7 (`createBrowserRouter`) | |
+| Dates | `dayjs` | |
+| Font | `@fontsource/metropolis` | MSU brand sans-serif (OFL) |
+| PDF reports | `@react-pdf/renderer` v4 (MIT) | Client-side, **lazy-loaded** on first export (its own ~1.2 MB chunk) |
+| Product tour | `driver.js` v1.9 (MIT) | Chosen over react-joyride because it's framework-agnostic and makes multi-page tours with async set-up simple |
+
+Code-style rule from the user: **everything in TypeScript, and every
+component/function gets a plain-language explainer comment.** Each file starts
+with a `/** FileName — what it does */` block. Keep doing this.
+
+**v9 API gotchas already hit:**
+- Icon names: use `HelpOutlineOutlined`, `DeleteOutlineOutlined` (plain `HelpOutline`/`DeleteOutline` don't exist).
+- `ListItemText` `slotProps.primary` takes `sx`, not raw style props.
+- `Typography` has no `paragraph` prop — use `sx={{ mb: 2 }}`.
+- x-charts: `barLabel` / `barLabelPlacement` live **on the series**, not the chart.
+- DataGrid selection model is `{ type: 'include', ids: Set }`; toolbar via `showToolbar`.
+- The default v9 grid toolbar (`GridToolbar` with `additionalExportMenuItems`) is only exported from **`@mui/x-data-grid/internals`**. RunsPage uses it to add PDF items to the Export menu, so re-check this on MUI X upgrades.
+- react-pdf needs **TrueType-outline** fonts. Fontsource ships CFF-in-WOFF, so `public/fonts/Metropolis-*.ttf` were converted (fontTools cu2qu).
+- Grid v2 layout: `<Grid size={{ xs: 12, sm: 6 }}>`.
+
+---
+
+## 4. Design system — "Spartan White"
+
+All tokens are in `src/theme/tokens.ts`; MUI theme in `src/theme/theme.ts`.
+Change colours there, not in components.
+
+| Token | Hex | Use |
+|---|---|---|
+| spartanGreen | `#18453B` | MSU core: headings, primary buttons, 3 px header rule |
+| kellyGreen | `#008208` | MSU accent: slider track (run pins now use spartanGreen) |
+| excellenceGreen | `#0B9A6D` | MSU accent (reserve) |
+| limeGreen | `#7BBD00` | MSU accent (sparing) |
+| surfaceGreen | `#E8F0EC` | selected toggles, chips |
+| accent (MSU Lime) | `#7BBD00` | **replaced gold/amber everywhere** (user request): Run SALUS + Play buttons (Spartan Green text on lime), selected-field pin, "current day" bar fills, PESW area. Keys: `accent`, `accentHover #6CA600`, `accentDark #4E7A00` (lime used as text or thin lines on white: headline numbers, selected-day cursor, PDF lines), `accentSoft #EEF6DC` (badge / running chip), `maxNeutral #C9D6CE` ("to run maximum" stack, neutral so lime stands out). MUI `secondary` = lime. |
+| canvas | `#F0F4EF` | page background |
+| rain / irrigation / fertilizer | `#2F6FB5` / `#0E8A8A` / `#C8431F` | events strip |
+| depthRamp | 10 stops gold→brown | nitrate profile, shallow→deep. This is a **data colour scale**, so it was kept when the UI gold was removed. |
+
+**Toggle buttons** (Yes/No, Tillage, Grain/Silage, Actual N/Product, Month/Year/All, Satellite/Streets): unselected = white with a 1.5 px grey-green outline; **selected = solid Spartan Green, white bold text, a ✓ and a light shadow** (user asked for a much clearer selected state). On green bars (`onGreenTheme`): translucent with a white outline vs solid white. Defined once in `theme.ts` / `chrome.tsx` `MuiToggleButton`.
+
+Rules: white app bar with 3 px Spartan Green bottom rule · white rounded cards
+(radius 10, 1 px border, no shadow) · card titles are small all-caps "overline" ·
+the results **date filter sits at the TOP** (user preference; concept "E" layout with
+concept "B" colours) · fixed bottom action bar on the form.
+
+Sources: brand.msu.edu colour palette & typography (Metropolis primary sans;
+Garamond for formal serif).
+
+### Colour scheme toggle: "Spartan White" ⇄ "Spartan Green" (white on green)
+`src/theme/chrome.tsx`. A **toggle in the app bar** (contrast icon; inside the ☰ menu on phones) flips the
+*chrome* between white bars with green text and **Spartan Green bars with white text and a lime
+(`#7BBD00`) 3 px rule. Green is the DEFAULT (user's choice).** Cards, charts and forms stay white in both schemes. The choice is remembered
+(`localStorage` `salus-online.uiTheme.v2`; the key was bumped so earlier saved "white" choices reset once). `VITE_UI_THEME=white` makes white the default.
+- `<ChromeSurface>` wraps a bar. In green it applies `onGreenTheme` (nested MUI theme: dark mode,
+  primary = white, paper = Spartan Green, white headings, white-on-green toggles/inputs, white menus).
+- Bars that follow it: **AppHeader** (logo straight on the bar), **WizardStepper**, **ResultsPage run header**,
+  **DateFilterBar** (a darker `#133830` band), **SetManagementPanel header**.
+- Inside a surface, use theme colours (`primary.main`, `background.paper`, `text.*`, `divider`,
+  `softPrimary()` for tints), **not** `tokens.color.*`, or the text will vanish on green.
+
+---
+
+## 5. User flow and routes (`src/App.tsx`)
+
+New runs are a **3-step flow**, shown by a slim stepper (`WizardStepper`) under the header.
+**Set Management is one panel**: there is no separate "Run Management" step (user decision).
+
+| Step | Where | What happens |
+|---|---|---|
+| 1 Select field | `/` MapPage | click the map → amber pin |
+| 2 Set Management | `/` MapPage, **`SetManagementPanel` in a Drawer over the map**: desktop (≥ 900 px wide) gets a 540 px right panel; **landscape phones/small tablets (`orientation: landscape` and height ≤ 600 px) get a 50/50 split** (map left, panel right, stepper hidden, slim header, `dense` panel); **portrait phones: map on top (~34% of the area under the stepper, ~30% of the screen), form sheet on the bottom 66% (`SHEET_SHARE`), dense panel** | run name + notes, test dataset, management answers (pre-filled from the dataset), simulation years → **Run SALUS**. The map stays clickable, so a click moves the pin. |
+| 3 Results | `/runs/:runId/results` ResultsPage | charts + date filter/slider; stepper shown when arriving from step 2 (`location.state.fromWizard`) |
+
+Other routes: `/runs` **My Runs** (DataGrid) · `/about` `/contact` `/review` ·
+old URLs `/new/*` and `/runs/new` redirect to `/` · `*` → `/`.
+
+All routes render inside `AppShell` (header + `<Outlet/>`).
+
+### Test-data behaviour (demo mode)
+- `data/datasets.ts` = catalogue of precanned results (`TEST_DATASETS`): id, label, years, results file, and the **management `defaults` that produced it**.
+- Picking a dataset card loads its `defaults` into the management answers and clamps the years to the dataset's range.
+- Only answers listed in `RESULT_DRIVING_FIELDS` (currently just `irrigate`) change results. They show an amber "Changes results" badge. **Irrigation and the dataset card stay in sync**: toggling irrigation selects the matching dataset (`datasetForInputs`), and picking a dataset sets irrigation. "Reset answers" reloads the dataset defaults.
+- ResultsPage trims the data to the run's `setup.startYear–endYear`.
+- To add a dataset: put a `RunResults` JSON in `public/data/` and add an entry to `TEST_DATASETS`. If it varies another input, add that key to `RESULT_DRIVING_FIELDS` and extend `datasetForInputs`.
+
+---
+
+## 6. File-by-file guide (`src/`)
+
+### Entry & config
+- **main.tsx**: first imports `components/map/maplibreWorker` (MapLibre worker URL, see §7), then loads Metropolis weights 400/600/700/800, `ChromeProvider` (which supplies the light/dark MUI theme + `CssBaseline`), `RunsProvider`, mounts `<App/>`.
+- **App.tsx**: route table (see §5).
+- **types/index.ts**: all shared types: `LatLng`, `ManagementInputs` (Set Management answers + units), `RunSetup` (run-level answers: name, description, datasetId, start/endYear), `TestDataset`, `Run` (has `setup` + `inputs`), `RunStatus`, `SoilLayer`, `DailyResult`, `DailyEvent`, `RunResults`, `TimeScale`.
+
+### Theme
+- **theme/tokens.ts**: colours, radius, fonts, `depthRamp`.
+- **theme/chartColors.ts**: colour slots per results chart (`CHART_SLOTS`), presets (`PRESETS`: MSU default, **Colour-blind safe** = Okabe–Ito blue/sky/vermillion + cividis-style yellow→navy soil ramp; Greyscale was removed at the user's request), `matchingPreset`, `nitrateRamp` (10 layer colours blended in OKLab from the user's shallow/deep picks; the default keeps the hand-tuned `depthRamp`).
+- **theme/units.ts**: **display units** — `UnitSystem` 'metric' | 'us', `DEFAULT_UNITS` (**metric**; override with `VITE_DEFAULT_UNITS=us`), result quantities (`unitOf`/`factorOf`/`convert` for nArea kg N/ha↔lb N/ac, water mm↔in, depth cm↔in, conc mg N/kg↔ppm N), Set Management inputs (`inputToDisplay`/`inputFromDisplay`/`inputUnit`: rate lbs/acre↔kg/ha, population seeds/acre↔seeds/ha — **runs still STORE US units**, only display converts), helpers `fmtNum`, `nRateText`, `layerLabel`, `niceMax`.
+- **theme/chrome.tsx**: `ChromeProvider` (also dark mode + the app-wide ThemeProvider/CssBaseline), `useChrome()` (`variant`, `dark`, setters), `useAppTheme()`, `ChromeSurface`, `onGreenTheme`, `softPrimary()`, `GREEN_ACCENT` (see §4).
+- **theme/colors.ts**: `useColors()` (light/dark colour set; use instead of `tokens.color` in components), `useIsDark()`, `visibleOn()`, `useVisibleEventColors()` (see z29).
+- **theme/theme.ts**: MUI theme: palette, typography, component overrides (AppBar rule, ToggleButton pill style, Dialogs have a plain white top, no green accent (user request), DataGrid header).
+
+### Data
+- **data/options.ts**: form choice lists (`SOIL_TEXTURES`, `SOIL_DEPTHS`, `TILLAGE`, `MATURITY`, `MONTHS`), weather year bounds (1990–2025), `DEFAULT_INPUTS` (matches the live site's prefilled form).
+- **data/datasets.ts**: `TEST_DATASETS` (East Lansing rainfed / irrigated, 2010–2014, Silty Clay, no-till, 100-day corn, 38k seeds, May 1, 150 lb N), `getDataset`, `datasetForInputs`, `RESULT_DRIVING_FIELDS`.
+- **data/demoRuns.ts**: one seed run per test dataset (generated from `TEST_DATASETS`; mock results).
+- **data/ReviewFormConfig.ts**: the Review page's questions and answers (`REVIEW_FORM`, `REVIEW_TEXT`); edit here, not in the page (see z32).
+- **public/data/east-lansing-{rainfed,irrigated}.json**: **MOCK** results (invented numbers placed at East Lansing, made by `scripts/make_sample_data.py`, seeds 11 / 23; see z38). Never commit real SALUS output here. Shape = `RunResults`: `layers[10]`, `maximums`, `days[1825]` (`pesw` mm, `soilN`/`plantN`/`leachN` kg N/ha, `conc[10]` mg N/kg), `events` (`rain`/`irrigation` mm, `fertilizer` kg N/ha).
+
+### State & hooks
+- **state/RunsContext.tsx**: `RunsProvider` + `useRuns()` → `{ runs, getRun, createRun(location, placeName, setup, inputs), deleteRuns }`. Persists to `localStorage` key `salus-online.runs.v2` (v1 is ignored because the shape changed; falls back to demo runs). **`createRun` is a MOCK**: status goes queued → running (0.8 s) → complete (3.5 s), and the results file comes from `datasetForInputs`. **Replace this with the real API.**
+- **state/ChartColorsContext.tsx**: `ChartColorsProvider` (in main.tsx) + `useChartColors()` → `{ colors, setColor, applyPreset(preset, chart?), resetChart }`; saved in `localStorage` `salus-online.chartColors.v1`.
+- **state/UnitsContext.tsx**: `UnitsProvider` (main.tsx) + `useUnits()` → `{ units, setUnits }`; ONE global setting (never per chart, so a page never mixes units), `localStorage` `salus-online.units.v1`.
+- **hooks/useRunResults.ts**: fetches `/data/<file>` with an in-memory cache. Point it at the real results endpoint later.
+- **hooks/useDateWindow.ts**: date-filter state: `index` (selected day), `scale` (month/year/all), computed `window {start,end}`, `step(±1)` (by month/year, or 30 days in All), and play/pause (1/3/10 days per 120 ms tick). Starts at July 1 of year 3.
+- **hooks/useReverseGeocode.ts**: lat/lng → "Town, State" via OSM Nominatim (no key; be gentle with traffic); `formatLatLng()` helper.
+- **hooks/useAddressSearch.ts**: debounced (400 ms) forward geocoding via OSM Nominatim (no key, ≤ 1 req/s policy, Midwest viewbox preference) → up to 6 `PlaceResult`s. Swap in MapTiler Geocoding if traffic grows.
+- **hooks/useElementWidth.ts**: ResizeObserver width for the hand-drawn SVG chart.
+
+### Layout components
+- **AppHeader**: in short landscape (height ≤ 600 px) the nav collapses to the menu button, the bar is 52 px, and the subtitle is hidden. White bar with the **SALUS leaf logo** (`src/assets/salus-logo.webp`, 192 px trimmed copy; full-res original in `design/salus-logo-original.webp`), wordmark "SALUS Online" and subtitle; nav Map / My Runs / About / Contact Us / Review; collapses to a menu below 820 px.
+- **AppShell**: header + outlet.
+- **SectionCard**: standard white card (`title` overline + `action` top-right in one row, then `subtitle` on its own full-width line, `legend`, children).
+- **Legend**: swatch + label row used above charts.
+- **PageContainer**: centred column with optional title/intro/actions.
+- **WizardStepper**: MUI Stepper "Select field · Set Management · Results"; completed steps are clickable when `onStepClick` is given. Dismissable with its ✕ (back via Settings → Steps bar; `hooks/useStepsBar.ts`). **Condensed on phones (≤ 600 px):** a single row about 20 px tall, small icons, and only the current step is named.
+
+### Map
+- **map/FieldMap.tsx**: reusable MapLibre map. Props: `runs` (Spartan Green pins with a thin white outline so they show on satellite imagery, `onRunClick`), `selected` (amber pin), `onSelect` (click → LatLng; omit for read-only), `flyTo`, `initialView` (default Midwest), `compact` (hides layer toggle/geolocate, compact attribution), `static` (thumbnail: no controls, not draggable or zoomable), `keepInView` + `layoutKey` (after the parent resizes the map box, refit and pan only if that point is off-screen; used so the pin stays visible beside the Set Management panel). Has a 3-way **Satellite / Hybrid / Streets** segmented toggle (100 px buttons).
+- **map/basemaps.ts**: `basemapStyle(id)` for `'satellite' | 'hybrid' | 'streets'`: Esri imagery + place labels; **hybrid** = the same plus Esri `Reference/World_Transportation` (roads + road names); streets = OpenFreeMap Liberty; MapTiler satellite/hybrid/streets-v2 if a key is set.
+- **map/AddressSearch.tsx**: MUI Autocomplete search box (address, town, or pasted "lat, lng" used directly) plus a lime **Go** button (and Enter) that takes the best match, geocoding once if no suggestions have loaded (`geocodeOnce`); shows "No place found" otherwise. `clearOnBlur={false}` so clicking Go keeps the typed text. `onPick(location, label)`.
+- **map/WelcomeDialog.tsx**: first-visit intro (3 steps), with **Show me how** (starts the product tour, `onTour`) and Choose a location. Remembered via `localStorage` `salus-online.welcomed`.
+
+### Set Management (step 2)
+- **runs/SetManagementPanel.tsx**: the panel content. Header (step label, place, **⚙ Form settings = Units**, close), a scrolling column of numbered cards — 1 Run details (name required, notes) · 2 Test dataset (demo notice, `DatasetPicker` stacked, Reset) · 3–5 `SetManagementForm` · 6 Simulation period (slider bounded to the dataset's years) · "Your scenario" recap — and a fixed footer (Cancel · **Run SALUS**). It owns its own state (no global draft). `dense` tightens spacing for the landscape split. The default run name follows the reverse-geocoded place until the user types their own. Calls `onSubmit(setup, inputs)`.
+- **form/DatasetPicker.tsx**: radio-style selectable cards, one per test dataset; `columns` 1 or 2.
+- **form/SetManagementForm.tsx**: controlled form (`value`, `onChange`, `errors`, `drivers`, `firstStep`). Three `FormSection`s: Field & soil (texture, depth, tillage) · Crop & planting (grain/silage, population, maturity, planting month/day, cover crop) · Water & nitrogen (irrigation, inorganic fertilizer → basis N/product + rate, manure). Exports `SECTIONS`, `validate()` and `summarize()`.
+- **form/FormSection.tsx**: numbered card with green left rule.
+- **form/YesNo.tsx**: labelled Yes/No toggle (replaces tiny radios); `badge` adds the "Changes results" chip.
+
+### Results (NShow)
+- **results/FieldMiniMap.tsx**: 148×100 static satellite thumbnail centred on the run's field (**no pin**, at user request; expand badge, "© Esri" credit) at the top-left of the results header. Clicking it opens a Dialog with a full interactive `FieldMap` (zoom 13, satellite/streets). It is keyed by run id so it re-centres when you switch runs.
+- **settings/SettingsButton.tsx**: generic ⚙ + popover (always base white theme, even on green bars) with `SettingsSection`; add future settings as sections. **settings/UnitsSetting.tsx**: the Metric / US customary switch section.
+- **results/ChartSettingsButton.tsx**: the ⚙ in each results card's corner ("Chart settings"): Units (global) first, then Colours (this chart). Tour target `chart-settings` on the nitrate card.
+- **results/ChartColorButton.tsx**: exports `ChartColorsSection` (the Colours part of chart settings; the file name is historical) with colour sets (this chart), "Use colour-blind safe colours on all charts", a native colour picker per series, live preview of the soil ramp, and Reset. Charts take colours as props (`NitrateProfileChart ramp`, `StackedGaugeChart currentColor/maxColor`, `EventsTimeline colors`); legends follow. **PDF reports use the same colours** (`downloadRunReport(run, palette)`; `pdfCharts` take `palette`).
+- **results/ExpandedChartDialog.tsx**: click-to-expand view of one results chart (⤢ button in each card corner, next to ⚙): ~92vh dialog (full-screen on phones) with title/legend/headline, the shared DateFilterBar, the chart filling the measured remaining height (`render(height)`), and ‹ › to cycle charts. ResultsPage describes the four charts once in a `cards` array (`render(height?)`) used by both the grid and the dialog.
+- **results/DateFilterBar.tsx**: sticky top bar: amber Play, ‹ period ›, Month/Year/All, window slider with start/selected/end labels.
+- **charts/NitrateProfileChart.tsx**: vertical columns, one per soil layer. **Soil depth is on the x-axis** (0–2 … 125–150 cm, labels angled −45° so all ten fit) and nitrate-N (mg N/kg soil) is on the y-axis (flipped from horizontal bars at the user's request). Columns use the depth colour ramp, with value labels above them. `yMax` is fixed per window (90th percentile of daily peaks × 1.1, computed in ResultsPage); columns above it are clipped and labels show the true value.
+- **charts/StackedGaugeChart.tsx**: stacked "current (amber) + remaining to run max (green)" columns; used for Soil Water (PESW, mm) and Nitrogen Budget (soil nitrate, plant N, leached N).
+- **charts/EventsTimeline.tsx**: custom SVG (fast for 1,800+ bars): rain + irrigation stacked bars, fertilizer markers on a top lane, selected-day cursor; click/drag selects a day; **hover shows a tooltip** (date, rain, irrigation, fertilizer N in the user's units) with a dashed guide line, snapping to the nearest event within ~5 px.
+- **runs/StatusChip.tsx**: coloured status pill.
+
+### PDF run report (`src/report/`)
+- **reportData.ts**: `buildReportData(run, results)`: trims to the run's years and computes the season-by-season table (annual increments of the cumulative plant N / leached N), totals, and nitrate snapshots (May 1 / Jul 1 / Oct 15) with a shared scale.
+- **pdfCharts.tsx**: react-pdf SVG charts: `NitrogenChart`, `SoilWaterChart`, `EventsChart`, `ProfileMiniChart`, plus a `niceTicks` helper.
+- **RunReportDocument.tsx**: the 3-page Letter `<Document>` (logo header + green rule, footer with page X of Y). Registers Metropolis from `/fonts`, logo from `/report/logo.png`. Matches `design/report-mockup/salus-run-report-sample.pdf`.
+- **downloadRunReport.ts**: fetch results → build data → `import()` react-pdf + document lazily → blob → download `SALUS-report-<run-name>.pdf`.
+- **useReportDownloads.ts**: hook for UI: `download(runs)` (sequential, completed runs only), `status` for the toast, `busy`.
+- **components/runs/ReportSnackbar.tsx**: progress / success / error toast.
+
+### Product tours — `src/tour/` (three tours, one engine)
+- **HowToTourConfig.ts**: **content only** (the user asked for tour text and targets in a separate config). `HOW_TO_TOURS` has three tours, each `{ name, steps[] }`:
+  - `gettingStarted` (12 steps, "Show me how" in the Welcome dialog): welcome → basemap → **find your area: search + Go (interactive)** → **click your field on the map (interactive, mandatory)** → panel → details → dataset → field → water & N → years → **Run SALUS (interactive)** → ends on the new run's results, pointing at "Explain results".
+  - `explainResults` (8 steps, **Explain results** button in the results header): header → **date filter (interactive)** → 4 charts → chart settings ⚙ (colours + units) → "Want a copy?" (points at My Runs / Help exporting).
+  - `helpExporting` (3 steps, **Help exporting** button on My Runs): grid → PDF row icon (`runs-pdf`; on phones the grid, since that column is scrolled off) → toolbar Export (`runs-toolbar`).
+  - Step fields: `{ id, route, target?, title, body, phoneBody?, phoneTarget?, action?, ensure?, waitFor?, doItForMe?, waitMs?, side?, align? }`. `route` may be `':results'` = the run made in this tour (or the page's run when the tour starts on a results page; the demo run after "Do it for me"). `TOUR_LABELS` holds button text; `TOUR_TARGETS` lists every `data-tour` id; `TOUR_DEMO_FIELD` = MSU Agronomy Farm.
+  - **Interactive steps** (`waitFor: TourEvent`): the user must actually do it (e.g. type an address and press **Go**); the tour advances when the app calls `emit(event)`. The right-hand button becomes an outlined **Do it for me** (runs `doItForMe`) so nobody gets stuck, and a lime "👉 Your turn" line is shown. Events: `placeFound` (MapPage: search pick/Go; the map flies there), `fieldSelected` (MapPage: map click drops the pin), `runSubmitted` (MapPage Run SALUS, payload `runId`), `dateChanged` (DateFilterBar slider/‹ ›/▶, events strip click).
+- **TourProvider.tsx**: the engine (driver.js). `useTour()` → `{ startTour(id?), registerAction, emit, active }` (`active` is true while any tour runs). If the user does the NEXT interactive step's task early (e.g. clicks the map during the search step), `emit` skips past both. Before each step: navigate to `route`, run `action`, run `ensure` only if the target isn't visible within 600 ms (used when coming Back), wait for the target (`waitMs`, default 3 s), scroll it into view; missing targets → centred pop-over. **The spotlighted area is live on every step** (`disableActiveInteraction: false`) so people can try what's shown (open the field map, hover charts, press ⚙/⤢, download a PDF, open a Select). driver.js's `body.driver-active` class is always removed (its `*{pointer-events}` rules break MUI controls); instead the dim SVG path blocks clicks outside the spotlight and its cut-out lets clicks through. On interactive steps `body.tour-interactive` makes the path pass ALL clicks through (driver.js sets `pointer-events:auto` inline on the path, hence `!important`). While `body.tour-on`, MUI Dialogs, Poppers, Tooltips, Popovers and Menus get z-index 10001 so things opened from the spotlight sit above the dimming. A ResizeObserver refreshes the spotlight if the target changes size. ←/→/Esc are ignored while focus is in an input/slider or any MUI modal (dialog/popover/menu) is open, so Esc closes the dialog, not the tour. Built-in action: `openDemoResults`; pages register the rest with `useTourAction` (MapPage: `resetMap`, `flyToDemoArea`, `selectDemoField` — a no-op if the user already has a pin; ResultsPage: `nudgeDate`).
+- **tour.css**: Spartan styling for `.salus-tour`, `.is-busy` ("loading…"), `.is-waiting` + `.salus-tour-yourturn`, and lifts MUI poppers/menus above the overlay while `body.tour-on`.
+- **To add or retarget a step:** put `data-tour="your-id"` on the element (`SectionCard` takes `tourId`; `FormSection` auto-tags `panel-<id>`), add the id to `TOUR_TARGETS`, and add a step to the tour. To make it interactive, add a `TourEvent`, call `useTour().emit('yourEvent')` where the user does it, and set `waitFor` + `doItForMe`.
+
+### Pages
+- **MapPage**: (the map area Box has `overflow: hidden` on purpose; see changelog (r)) steps 1–2: stepper, full-bleed map, **address search bar** at the **top-right** on desktop/landscape split (full width beside the zoom buttons on phones) (a pick or Go only flies the map there at field zoom 15 via `flyTo`; the user must then **click their field** to drop the pin, which opens the panel — an address is a house or town centre, not the field; **hidden while a location is selected**, and it returns when the panel is closed), a **closable** step-1 card (top-right under the search on desktop, bottom sheet on phones; **hidden while a product tour runs**, via `useTour().active`; instructions + "Now click your field" text after a search, a large white-on-green **How it works** button that opens the Welcome dialog — the recent-runs list was removed; ✕ hides it, and a round **"?" Fab** brings it back; remembered in `localStorage` `salus-online.mapHelpHidden`; also hidden while a pin is dropped), and the Set Management Drawer. The map narrows by the panel width on desktop so the pin stays visible. "Run SALUS" → `createRun` → results with `state.fromWizard`.
+- **RunsPage**: **My Runs**: map of runs + DataGrid (**cards on portrait phones**, `RunCardList`, see z37) (sort, quick search, filter, checkbox delete, double-click opens). **Downloads:** each completed row has a PDF icon in the "Results" actions column, and the toolbar's Export (download) menu has Print, CSV, **PDF report: N selected**, and **PDF reports: all completed**. Results/PDF actions are disabled until a run is complete.
+- **ResultsPage**: optional wizard stepper · run header (field mini-map that enlarges on click, name, input chips, notes, run switcher) · data trimmed to the run's years · sticky DateFilterBar · grid of 3 cards + full-width events strip. Shows a progress card while the run is queued or running.
+- **InfoPages**: `AboutPage`, `ContactPage`, `ReviewPage` (questions from `data/ReviewFormConfig.ts`; forms are stubbed: they show a thank-you and send nothing).
+
+---
+
+## 7. Current status
+
+**Works:** 3-step new-run flow (map → Set Management panel over the map → Results) with dataset-driven defaults, all routes, map selection (tiles need internet), form plus validation, mocked
+run lifecycle, DataGrid management, results charts with mock sample data, play/scrub, mobile layout.
+Type-check and build are clean.
+
+**Mocked / not done:**
+1. **No backend.** `createRun` is fake, and results are always one of the two East Lansing test datasets (picked by the irrigation answer).
+2. Contact/Review forms post nowhere.
+3. Runs live in browser `localStorage` only (no accounts).
+4. No tests yet.
+5. Bundle is about 1.5 MB (warning only). Code-split MapLibre/charts with `React.lazy` per route when convenient.
+
+**Open questions:** the full, prioritised list for stakeholders (Part 1 science & direction, Part 2 programming) lives in the Claude Doc **"Open questions for stakeholders"** (https://claude.ai/code/artifact/1c49f507-42c8-476c-834d-2f40e11a7255). Keep it in sync when a prototype decision changes. Older notes:
+- **Colour scheme:** green is now the default. Keep the white/green toggle for users, or remove it?
+- PESW units: labelled **mm** (the earlier concept art said cm). Confirm with the SALUS team.
+- Exact SALUS API contract (endpoints, auth, result format) for real runs.
+- Which outputs beyond NShow (yield, N₂O, NUE) should appear on results.
+- Fertilizer "Product" basis: which products and N fractions?
+- **Mock data vs. inputs:** the mock events apply 200 kg N/ha a year (120 in early May + 80 in late June) while the dataset defaults say 150 lb N/acre; mock results don't follow the form answers. Real runs will.
+- **PDF export:** implemented client-side (see `src/report/`). The Python mock-up in `design/report-mockup/` is kept as the visual reference and could become a server-side generator later.
+
+### Standalone build (separate folder, main project untouched)
+`../salus-online-standalone/` packages this app as ONE HTML file that runs by double-clicking (file://), for sharing before a real deployment. Its `src/` is an exact copy of this project's `src/` (refresh with `npm run sync`, then `npm run build` → `release/SALUS-Online.zip`). The file:// fixes (single-file inlining, hash router via an alias shim, inlined classic MapLibre worker, `fetch` shim for `/data`, `/fonts`, `/report`) all live in that folder's `vite.config.ts` and `standalone/`. **If you add a results JSON to `public/data`, also list it in `standalone/shims.ts` there.**
+
+### MapLibre worker (fixed 2026-10-06, keep this)
+MapLibre v6 decodes vector tiles (the **Streets** basemap) in a separate worker file it looks for next to its own module. Vite moves MapLibre (dev pre-bundling and builds), so that lookup failed: "Worker failed to load", Streets blank, Satellite (raster images) still fine. **`src/components/map/maplibreWorker.ts`** (imported first in `main.tsx`) bundles the worker with `?worker&url` and calls `setWorkerUrl()`; `vite.config.ts` sets `worker.format: 'es'`. The standalone build aliases that file to a no-op and uses its own inlined worker.
+
+## 8. Suggested next steps
+1. Define the backend contract; make `createRun` POST and poll; make `useRunResults` fetch by run id.
+2. Add yield / N₂O / NUE summary cards to ResultsPage (match SectionCard style).
+3. "Edit & re-run" (start a wizard draft from an existing run's `setup` + `inputs`) and "compare two runs".
+4. Lazy-load routes; add Vitest + React Testing Library for hooks (`useDateWindow`) and `validate()`.
+5. Accessibility: phases 1–2 of the audit are done (z17); next are screen-reader / device testing and an accessible HTML report (phase 3).
+
+## 9. Changelog
+- **2026-10-09 (z38)**: **All results data in the repo is now MOCK** (before pushing to GitHub). `public/data/east-lansing-{rainfed,irrigated}.json` were real SALUS output. They are replaced by the synthetic data from the walkthrough deck: invented numbers in the same `RunResults` shape, 2010–2014, from the new **`scripts/make_sample_data.py`** (seeds 11 and 23, so `python3 scripts/make_sample_data.py public/data` reproduces them exactly). Places, coordinates, run names, demo pins and form defaults are unchanged, and everything works as before. Wording that claimed real SALUS output now says mock sample data: the Set Management demo notice and dataset description, the Help tour's dataset step, the PDF report footer and its "About this report", and the code comments and docs. `design/report-mockup/salus-run-report-sample.pdf` was regenerated from the mock irrigated data (`make_report.py` now labels it as mock). The standalone build was re-synced and rebuilt, so the shared HTML and zips now carry mock data only. README has a "Data: everything here is MOCK" section.
+- **2026-10-09 (z37)**: **My Runs on phones held upright shows cards instead of the grid.** When the screen is ≤ 600 px wide and in portrait, `RunsPage` swaps the DataGrid for the new `components/runs/RunCardList.tsx`. Each card shows the run name (with a `StatusChip` if the run isn't finished), the place, a settings line (soil · N rate in the current units · water · years) and the created date. The card's buttons are **View results** (full width), Results tables, PDF report and a ⋮ menu with Delete…; all are 44 px touch targets and are disabled until the run is complete. Above the cards is a toolbar (`runs-toolbar`) with search, Sort (Newest / Oldest / Name A–Z) and Export (⤓: CSV of the list, PDF for the ticked runs, PDFs for all completed runs). Below it are **Select all** (with a mixed state) and a run count. The list shows 10 cards, then "Show more". Selection uses the same model as the grid, so the existing selection bar and bulk delete still work, and rotating the phone keeps the ticked runs (the grid comes back in landscape). Help exporting tour on phones: new `phoneBody` text, and the PDF step now points at the first finished card's PDF button (`runs-pdf`; the `phoneTarget` was removed). axe: 0 violations, light and dark.
+- **2026-10-08 (z36)**: Delivery fix: on the Mac (case-insensitive disk) the shareable `SALUS-Online.zip` had been overwriting the source snapshot `salus-online.zip` in `Claude outputs/`. Now `Claude outputs/salus-online.zip` = source snapshot only; the shareable zip lives only at `salus-online-standalone/release/SALUS-Online.zip`, next to `release/SALUS Online/SALUS Online.html` (+ READ ME), which is now kept up to date too. A copy of the HTML stays at `Claude outputs/SALUS Online.html`. **Never write a file whose name differs from another only by case.**
+- **2026-10-08 (z35)**: The **1 · 2 · 3 steps bar is dismissable**. `WizardStepper` has a ✕ at its right ("Hide the steps bar"); hiding it announces "Steps bar hidden. Turn it back on in Settings." and moves keyboard focus to the page heading/main. The top-bar ⚙ Settings has a new **Steps bar** section (`settings/StepsBarSetting.tsx`, Shown/Hidden switch) to bring it back. The choice is remembered in this browser via the new `hooks/useStepsBar.ts` (localStorage `salus-online.stepsBar.v1`, shown by default; `useSyncExternalStore` so Settings and the bar update together). On the map page the map grows to fill the freed space. Phones: the ✕ sits at the right of the condensed bar. axe clean; tours unaffected.
+- **2026-10-08 (z34)**: Results cards: the **Soil Water subtitle no longer jumps** while the date plays. Cause: it sat beside the live headline number, whose width changed every day (e.g. two-digit to three-digit values and back), so the subtitle re-wrapped. Fixes: (1) `SectionCard` now puts the `subtitle` on its own full-width line under the title row (all cards), so corner controls/headlines never squeeze it; (2) `Headline` in ResultsPage uses tabular (equal-width) digits and reserves the widest value the run can show (`reserve`, from `widestNum(run maximum)`, which accounts for fmtNum's extra decimal on small numbers), so the number area itself is a fixed width too. Checked by stepping through all of a run in metric and US units: the subtitle size never changes.
+- **2026-10-08 (z33)**: Results cards: the **Move** (⠿ drag handle / move menu) button moved from before the title to the card's top-right corner with the other controls, and the corner controls are now in the order **Expand (⤢), Settings (⚙), Move (⠿)** (also the Tab order). `ResultsPage` puts the `handle` from `SortableCardGrid` last in `CardCorner` instead of passing it to `SectionCard` (whose `handle` prop is kept but unused); dragging, click-for-menu and keyboard moving work as before. Explain-results tour step "Layout, colours and units" text now lists the three buttons in that order.
+- **2026-10-08 (z32)**: **Review page rebuilt from a config.** Removed the star rating. Every question and answer now comes from the new **`src/data/ReviewFormConfig.ts`** (`REVIEW_FORM` in display order + `REVIEW_TEXT` for the heading, intro, button and thank-you text; field kinds `select` / `choice` / `text`, each with `id`, `label`, optional `helper` and `required`). Order: **I am a…** (drop-down, unchanged options) · four questions from the live SALUS Online form as radio rows: *How believable do you find the outcomes shown on SALUS Online?* and *How useful do you believe this website would be in providing information for you about nitrogen management and factors affecting your yields?* (Very / Mostly / Somewhat / Not at all), *Overall, how would you rate SALUS Online?* (Excellent / Good / Fair / Poor), *Would you use SALUS Online to help make decisions about your nitrogen management?* (Yes / No) · **What could be better?** (open text, kept). `ReviewPage` + `ReviewQuestion` in `pages/InfoPages.tsx` render the config (each choice question is a fieldset with a legend, so screen readers read the question with each answer; answers wrap on phones). All optional; submission still stubbed. axe clean in light, dark and phone widths.
+- **2026-10-08 (z31)**: Green bars: the SALUS leaf logo now sits straight on the Spartan Green top bar (white disc removed), at the same size as on White/Dark bars (34 px phones, 40 px desktop), matching Dark mode + Dark bars. `AppHeader.tsx` only.
+- **2026-10-08 (z30)**: Dark mode now uses **option A "Spartan Night"** (user's pick) instead of Graphite: page `#0B1F1A`, cards `#12302A`, raised/table headers `#183A33`, borders `#2C4D44`, text `#EEF3F0` (12.6:1) / muted `#A9BDB4` (7.2:1), control outlines `#7A958B` (4.4:1), selected tint `#1B4038`, **lime** form-card edges; green bars unchanged. Only `darkColor` in `tokens.ts`, the dark tour pop-over in `tour.css` and the dark status chips changed. Charts: in dark mode every bar now gets a **light frame** (`outline #D3D8D6`, so dark fills such as the colour-blind blue or the deep soil browns show on the dark green) and hatching uses a new `hatch` key (dark `#0F2E27`; light mode `#18453B`, unchanged look); legends match. Also fixed (both modes): while the map is still loading, run pins within ~1 km now share one pin (`groupRuns` fallback), so two pins never overlap for the first few seconds (axe `target-size`). Checked: axe 0 violations on 18 dark + 14 light states; tours pass in both modes.
+- **2026-10-07 (z29)**: **Dark mode** (top-bar ⚙ Settings → **Dark mode** switch, off by default; localStorage `salus-online.darkMode.v1`; all other settings unchanged). Look = option B "Graphite" from the dark-mode mockups (Design canvas "SALUS dark mode options"): charcoal page `#111312` and cards `#1B1E1D`, text `#F2F4F3` / muted `#ADB5B1`, MSU Lime for primary actions, selected states and the focus ring, Excellence Green form-card edges; the **Green bars stay identical**, and "White bars" becomes **Dark bars** (charcoal with a lime rule). How: `tokens.ts` has `darkColor` (same names/jobs as `tokens.color`, plus new role keys `outline`, `stripe`, `raised`); `theme.ts` builds both themes with `makeTheme(mode)` (`theme`, `darkTheme`; dark also restyles MapLibre's zoom buttons and credits); `ChromeProvider` now owns dark mode, supplies the app-wide ThemeProvider + CssBaseline (moved out of main.tsx), sets `html[data-color-mode]` (used by `tour.css` for a dark tour pop-over) and exposes `useAppTheme()`; dialogs/pop-overs that used the fixed light `theme` now use `useAppTheme()`. New `theme/colors.ts`: `useColors()` (mode-aware colour set — **use this in components instead of `tokens.color` for anything drawn on the page or cards**), `useIsDark()`, `visibleOn()`/`contrast()`, `useVisibleEventColors()` (swaps event colours under 3:1 on charcoal, e.g. the colour-blind set's black "selected day" line, for both strip and legend). Charts: dark bar frames/hatching (`useBarOutline()`), nitrate bars get a light frame so deep browns show, legend swatches framed grey; status chips have dark variants. Checked: axe 0 violations on 18 dark screens/states (incl. Dark bars, Settings, results tables) and light mode unchanged (14 states); all three tours pass in dark mode at 1440 and 390 px; the switch works by keyboard and keeps the pop-out open. PDF reports stay light.
+- **2026-10-07 (z28)**: My Runs: **removed the Status column**. Completed runs show just their name; Queued / Running / Failed runs show their `StatusChip` right after the name in the Run column, so unusual states still stand out. The Running chip's spinner is now `aria-hidden` (the label already says "Running"; fixes axe `aria-progressbar-name`).
+- **2026-10-07 (z27)**: **Results tables from My Runs.** New row action (table icon, "View results tables", completed runs only) in the My Runs grid opens `RunTablesDialog` (`src/components/runs/RunTablesDialog.tsx`): the same tables as the PDF report — **Season by season** (with Total row), **Key results**, **Nitrate snapshots** — built with `buildReportData` + `scaleReportData` in the user's current units and shown via `ChartDataTable`. Each tab has **Download this table (CSV)** (`SALUS-<run>-<tab>.csv`). Esc closes and focus returns to the icon. Actions column widened to 148. Help → exporting tour `pdf` step mentions the table icon.
+- **2026-10-07 (z26)**: Basemap toggle is now **Satellite / Streets**: the old Hybrid button was removed and its map (satellite + Esri roads and road names) is what **Streets** shows (`value="hybrid"`). The plain vector street map (OpenFreeMap / MapTiler streets) is no longer offered, but `basemapStyle('streets')` is kept in `basemaps.ts` if it's wanted back. Applies to every FieldMap with a toggle (main map and the results field-map dialog). Tour step renamed "Satellite or streets".
+- **2026-10-07 (z25)**: Results date bar: pressing **Play** when the last simulated day is showing now **restarts from the first day** of the run (it used to do nothing). `useDateWindow` wraps `setPlaying`; Play anywhere else continues from the current day as before.
+- **2026-10-07 (z24)**: The MSU colour set is now labelled **Default** (was "MSU default") everywhere it's offered: top-bar Settings → Chart colours and each chart's ⚙ Colours.
+- **2026-10-07 (z23)**: **Text size setting + one Settings pop-out in the top bar.** A ⚙ **Settings** button in the app bar (also on phones, next to ☰; tour target `app-settings`, replacing the old contrast toggle `theme-toggle`) opens one pop-out with: **Text size** (Default / Large), **Colour scheme** (Green bars / White bars) and **Chart colours** (MSU default / Colour-blind safe for every chart; shows neither ticked if charts differ). Text size: `state/TextSizeContext.tsx` (`useTextSize()`, localStorage `salus-online.textSize.v1`, applied before first paint) sets the root font size 100% / 125%; hard-coded px font sizes in the app (header wordmark, headlines, chart SVG text, tour CSS, tooltips, key caps, badges) were converted to rem, x-charts axis ticks/labels are forced to rem in `theme.ts`, so everything scales together. Layout follows: the app bar publishes `--salus-header-h` (ResultsPage's sticky date bar and the html scroll padding use it), the nav collapses to ☰ below 1060 px with Large text, results cards go one fewer per row with Large text (until xl), and the Set Management panel is `min(33.75rem, 60vw)` wide. Text size is also in each chart's ⚙ and the Set Management ⚙. `ChromeSurface` now renders the same elements in both schemes (only the theme + CSS variable change), so switching scheme no longer re-mounts the header (the pop-out stays open). New files: `settings/TextSizeSetting.tsx`, `settings/ColourSettings.tsx`; `SettingsButton` takes `icon`, `size`, `color`. Default text size looks exactly as before.
+- **2026-10-07 (z22)**: **Keyboard focus can't get lost behind a tour.** Bug: keyboard-only, on "Find your area" focus wandered off behind the dimming (header, nav…) and the step itself never got focus. Now (TourProvider): (1) **focus follows the tour**: each step focuses the pop-over (a dialog named by its title and described by its text) or, on "Your turn" steps, the first control in the spotlight (e.g. the address box); re-checked at 350 ms in case a closing dialog hands focus back late (`focusStep`); (2) **Tab is contained on every step** (pop-over + spotlight, including a spotlighted grid button such as the PDF icon); Esc / the ✕ still close the tour, so it's not a keyboard trap; (3) when the tour ends, focus returns to the button that started it (else the page h1); (4) clicks on the pop-over's buttons always work even while focus sits in a text field (driver.js calls the same handlers for ← → Esc; `keyBelongsToPage()` ignores only real keys while typing). Removed the 👉 emoji from the "Your turn" banner. Checked keyboard-only through all 12 getting-started steps (desktop + phone), Explain results and Help exporting: focus never left the pop-over/spotlight; mouse tours unchanged.
+- **2026-10-07 (z21)**: Tours: **Tab now reaches every control in the spotlight** (e.g. Soil texture / Soil depth dropdowns on "Describe the field"). driver.js's own Tab trap only knew links, buttons, text/radio/checkbox inputs and native selects, so it skipped MUI dropdowns (`div role=combobox tabindex=0`), number fields and sliders. TourProvider now handles Tab itself (window keydown, registered before driver.js so `stopImmediatePropagation` blocks only driver's handler): info steps cycle through the pop-over + spotlighted area using a full focusable list (`FOCUSABLE` / `tabbables()`); "Your turn" steps don't trap at all; an open menu/dialog keeps its own Tab handling.
+- **2026-10-07 (z20)**: **Map page is a fixed, app-like screen.** There was almost a full screen of empty grey space under the map/panel. Cause: screen-reader-only text (`srOnly`, absolutely positioned) sat at its natural spot deep inside the scrolling panel and stretched the page's scroll height. `srOnly` (`theme/a11y.ts`, now also used by FieldMap) pins to `top: 0; left: 0`. On "/" AppShell locks the frame to `100dvh` with `overflow: hidden`, and MapPage fills the rest (`flex: 1; minHeight: 0`; the old `calc(100dvh - 71px)` min-height and the 420 px map minimum are gone): the page never scrolls, the map pans/zooms, the Set Management panel scrolls inside. Checked at 1440×900, 1280×700, 1024×768, 390×844 and 844×390. Other pages scroll as before.
+- **2026-10-07 (z19)**: Set Management keyboard fix: tabbing onto the **Simulation period** year slider only scrolled the thin slider track into view (it sat under the panel footer). `FormSection` now scrolls the WHOLE card into view when keyboard focus enters it (`revealOnKeyboardFocus`, only for :focus-visible; tall cards just keep the focused control visible), each section is a named group (`role="group"` + `aria-labelledby` its heading), the scroller (`data-form-scroller`) has 24 px scroll padding, and the slider shows the year in a Spartan-green bubble on the focused thumb (← → move one year).
+- **2026-10-07 (z18)**: **Bulk delete on My Runs.** Ticking runs (or the header box) shows a selection bar above the grid: "N runs selected · Clear selection · Delete selected (N)". Deleting (bulk, or one run via its row menu "Delete…") opens `components/runs/DeleteRunsDialog.tsx` (lists the runs by name) and then an **Undo** toast for 8 s (`RunsContext.restoreRuns`). Fixed a selection bug: after "select all" the grid's model is `{ type: 'exclude' }`, so RunsPage now resolves selection with `isSelected()` (this also fixes "PDF report: N selected" after select-all).
+- **2026-10-07 (z17)**: **Accessibility fixes, audit plan phases 1–2** (see the Claude Doc "SALUS Online — Accessibility audit"). Phase 1: one global keyboard focus ring (`theme.ts` CssBaseline: 3 px `var(--salus-focus)`, Spartan on white, lime inside `ChromeSurface`); `html` scroll-padding so focus never hides under the sticky bars (ResultsPage measures header + date bar); per-page browser titles (`usePageTitle`, PageContainer does it automatically), focus moves to the page's h1 and the page is announced on navigation (`RouteFocus`), one polite announcer (`state/AnnouncerContext.tsx`, `useAnnounce()`); "Skip to main content" link + `<main id="main">`; sr-only h1 on the map page; text-field outlines #767676, rating stars #A36F00, colour-blind preset grey #8C8C8C; Contact autocomplete; My Runs search box label; stepper without aria-label on spans (sr-only state text); field-map credit moved out of the button; run pins that overlap on screen share one pin with a count and a picker menu (`runMenu` prop; off during tours); tour pop-over is a named dialog and driver.js's ARIA on the spotlighted element is restored; events tooltip closes on Esc, stays while hovered, and the strip is keyboard-usable (← → step through events, Enter selects, live region); Run select replaced by `results/RunSwitcher.tsx` (menu of links). Phase 2: Spartan outline on every bar, hatched "run maximum" (`charts/ChartPatterns.tsx`), round caps on irrigation bars, legend swatches match (`mark`); one-line **summary** under every chart; **Chart settings → View: Chart / Table** (`results/ChartDataTable.tsx`, remembered in `salus-online.chartViews.v1`, also in the expanded view; events table has Show buttons); chart keyboard-focus areas named (`charts/LabelChartFocus.tsx`); **Move menu** on the ⠿ handle (click/Enter: Move up/down/top/bottom; Space still drags). axe: 0 violations on 14 screens/states (was 13). Not done: screen-reader and real-device testing, tagged/HTML report (phase 3).
+- **2026-10-06 (a11y audit)**: Accessibility audit against MSU's Basic Accessibility Checklist + WCAG 2.2 AA (MSU Technical Guidelines since 2026-01-01) is in the Claude Doc **"SALUS Online — Accessibility audit"** (https://claude.ai/code/artifact/9a150af0-741b-4e37-a140-92c24aee7fae): 33 checks, 12 fail, 9 partial, with recommended fixes and a 3-phase plan. No code changed for it yet.
+- **2026-10-06 (z16)**: All MUI **tooltips** restyled in `theme.ts` (`MuiTooltip`): deep Spartan Green (`spartanGreenDark`) background, white 13 px semi-bold text (~15:1 contrast, was MUI's small translucent grey), thin lime edge and shadow so they stand out on the green header and the map; arrow matches.
+- **2026-10-06 (z15)**: **Drag to re-order the results charts.** Each card has a ⠿ handle (only the handle drags, so chart clicks/hovers still work). `components/results/SortableCardGrid.tsx` (dnd-kit: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`, MIT) lays cards out row by row in a 60-column grid: the events timeline (`wide`) always takes a full row; other cards share rows (3 on lg, 2 on md, 1 on phones) sized by `weight` (nitrate 1.15, water 0.7, N budget 1.15) and stretch to fill short rows. Gutters are card padding, not grid gaps (60 gaps = 1180 px of overflow). While dragging: small title "ghost", the moving card dims, a lime bar shows where it lands; layout re-flows on drop. Keyboard: Space/Enter pick up, arrows, Space/Enter drop, Esc cancel, with screen-reader announcements. Order saved for all runs in localStorage `salus-online.resultsLayout.v1` (`hooks/useCardOrder.ts`, repaired if charts are added); **Reset layout** button appears when changed. The expand dialog's ‹ › follows the chosen order. `SectionCard` has a new `handle` prop. Explain-results tour step renamed "Layout, colours and units" and mentions the handle. **Standalone:** these packages must be installed there too (done).
+- **2026-10-06 (z14)**: **Keyboard field selection** on the map. Tab to the map (or search: focus moves to the map after Go/Enter) → a focus ring, a white boxy **reticle** (four corner brackets, dark edge) framing the map centre and a key guide appear (keyboard focus only, via :focus-visible). Arrow keys pan, + / − zoom (MapLibre's keyboard handler), **Enter/Space drops the pin there**; a mouse click hides the aids. Screen readers: the canvas aria-label gives the instructions; a polite live region reads the map-centre position after each move and "Field selected at …". Selecting by keyboard moves focus to the Set Management heading; closing the panel returns focus to the map. Run pins are focusable buttons ("Open run …", Enter). FieldMap: `onSelect(p, how)` (`SelectHow` = 'pointer' | 'keyboard'), new `focusKey`; SetManagementPanel: new `focusKey`. Tours ignore ← → while the map has focus. Step-1 card mentions the keys.
+- **2026-10-06 (z13)**: Audit of ways to drop out of a tour by accident; all three tours now handle them. **Leaving the tour's page by yourself ends the tour** (nav links, the browser's Back button, opening a run from My Runs or the map, the last step's My Runs link); this replaces z12's per-step `endIfLeft` option. Exceptions: switching runs with the **Run menu** during Explain results carries on with the new run, and **Run SALUS** (whose task is to change page) carries on to the results. **Closing Set Management** (✕ / Cancel) during the panel or Run SALUS steps goes back to "Click your field" (new `fieldCleared` event + `REWIND_ON` in HowToTourConfig.ts) instead of leaving the spotlight on nothing. **Clicking an old run's pin** on the map during a tour selects the field there instead of opening that run.
+- **2026-10-06 (z12)**: Help exporting step 1 ("All your runs") ends the tour if the user opens a run themselves (double-click a row, or tap a run card on phones). New per-step `endIfLeft` option in HowToTourConfig.ts: TourProvider destroys the tour when the path changes away from that step's route while the tour isn't changing step itself (`busyRef`).
+- **2026-10-06 (z11)**: All three Help tours now let people **try what's being shown**: the spotlighted part of the page is clickable on every step (e.g. the little map in "Your run at a glance", chart hovers, ⚙ settings, PDF buttons), while the dimmed area stays blocked. Dialogs/menus/tooltips opened from the spotlight appear above the dimming; Esc closes them without ending the tour.
+- **2026-10-06 (z10)**: Removed the **Greyscale** colour set; chart colour sets are now MSU default and Colour-blind safe (custom colours still available).
+- **2026-10-06 (z9)**: Weather & management events strip now has a **hover tooltip** like the other charts (date, rain, irrigation, fertilizer N; snaps to nearby events; flips left near the right edge). Removed the old browser-native tooltip on fertilizer markers.
+- **2026-10-06 (z8)**: **Click-to-expand charts**: a ⤢ button on each results card opens the chart nearly full-screen (full-screen on phones) with the date bar (synced with the page) and ‹ › to flip between charts. Results charts are now defined once in a `cards` array in ResultsPage. Tour step mentions it.
+- **2026-10-06 (z7)**: Basemap toggle: the middle **Hybrid** button is square on both sides (only the outer ends are rounded).
+- **2026-10-06 (z6)**: Removed the green accent along the top of all dialogs; their tops are now plain white.
+- **2026-10-06 (z5)**: Added a **Hybrid** basemap (satellite + Esri roads and road names + place labels); the map toggle is now Satellite / Hybrid / Streets. Fixed the dialogs' odd top corners: the 3 px green top border tapered into crescents on the rounded corners; it's now a straight accent bar clipped by the corners (all dialogs, set in `theme.ts`).
+- **2026-10-06 (z4)**: **Fixed the Streets basemap** (blank in `npm run dev` and in builds; MapLibre's worker file wasn't found). Added `src/components/map/maplibreWorker.ts` + `worker.format: 'es'`. This also resolves the earlier "production build has no map tiles" known issue. Verified Streets renders (mocked vector tiles) in dev, the production build and the standalone file.
+- **2026-10-06 (z3)**: Fixed the results field-map dialog inheriting the green chrome theme from the results header (green dialog, unreadable Satellite/Streets toggle): `FieldMiniMap` now renders its Dialog inside the base theme. **Rule: any Dialog/Popover opened from inside a `ChromeSurface` should wrap itself in `<ThemeProvider theme={theme}>`** (as `SettingsButton` does).
+- **2026-10-06 (z2)**: Chart settings now show **Units above Colours**. Standalone rebuilt.
+- **2026-10-06 (z)**: The chart palette button became a **⚙ Chart settings** button (Colours + **Units**). Added a global **Metric / US customary** units setting (**metric default**, `src/theme/units.ts`) applied to every chart, headline, legend, tooltip, the results header chip, the My Runs N-rate column, the PDF report, and the **Set Management form** (⚙ in its header; fertilizer rate, plant population, soil-depth classes, validation limits, scenario recap). Runs still store US input units. Started the stakeholder doc "Open questions for stakeholders".
+- **2026-10-06 (y)**: **Chart colour settings** for colour-blind users: a palette button on each results chart with Colour-blind safe / Greyscale / MSU default sets, a colour picker per series, "colour-blind safe on all charts", and Reset. Remembered per browser and used in the PDF reports. Added a step to the Explain results tour. (Validator note: the DEFAULT rain vs irrigation blues are close — normal-vision ΔE ≈ 12, tritan ≈ 5 — the colour-blind set fixes that.)
+- **2026-10-06 (x)**: Added a separate **standalone build** folder (`salus-online-standalone/`): the whole app as one double-clickable HTML file plus a READ ME, zipped for sharing. No changes to this project's code. Found and documented the production-build map-worker issue above.
+- **2026-10-05 (w)**: Pins for existing runs now use the theme's primary MSU Spartan Green (`#18453B`) instead of Kelly Green, with a thin white outline (on all pins) so they stay visible on satellite imagery.
+- **2026-10-05 (v)**: Moved the address search and the step-1 "Find your field" card (and its "?" button) to the top-right of the map on desktop. The card and "?" are hidden while a product tour runs. The tour's search pop-over now opens to the left of the search box.
+- **2026-10-05 (u)**: Searching an address no longer drops the pin: it flies the map to field zoom and the step-1 card says "Now click your field"; selecting is always a map click. The getting-started tour has a new mandatory **Click your field** step after the search step (12 steps). Fixed the tour overlay still blocking map clicks on interactive steps.
+- **2026-10-05 (t)**: Tours made **interactive** and **split into three**: "Show me how" (map → Set Management → Run SALUS, ends on results), "Explain results" (button on results pages) and "Help exporting" (button on My Runs). Interactive steps wait for the user (type an address + **Go**, press Run SALUS, move the date) with a "Do it for me" fallback. Added the address **Go** button and fixed the search box clearing its text on blur. The step-1 map card's "Your runs" list was replaced by "Now click your field" text after a search, a large white-on-green **How it works** button. Tested on desktop, iPad landscape and phone portrait.
+- **2026-10-05 (s)**: Added the guided product tour ("Show me how" in the Welcome dialog) using driver.js. Content lives in `src/tour/HowToTourConfig.ts` (19 steps across Map → Set Management → Results → My Runs), with phone-specific text/targets where needed. Tested on desktop, iPad landscape and phone portrait, including Back across pages and Esc to close.
+- **2026-10-05 (r)**: Fixed the layout breaking on iPad landscape when the Welcome dialog was open. The closed Set Management drawer waits off-screen and was stretching the page (1980 px wide on a 1440 px screen; extra height on phones). iPad Safari then zoomed out to fit, and the dialog's scroll lock shifted everything. The map area now clips with `overflow: hidden`. **Keep that if you restructure MapPage.**
+- **2026-10-05 (q)**: The Satellite/Streets toggle is now a segmented control: outer corners match the container (16 px), inner corners are square, and both buttons are a fixed equal width (112 px) so the pair doesn't change size when the ✓ moves.
+- **2026-10-05 (p)**: Much clearer selected state for all toggle buttons (solid Spartan Green + white text + ✓ vs white outlined), set globally in the theme.
+- **2026-10-05 (o)**: Spartan Green (white on green) is now the **default** scheme (storage key bumped to `.v2`). Replaced the gold/amber accent everywhere with **MSU Lime**: Run SALUS and Play buttons (green text on lime), the selected pin, current-day chart fills, headline numbers (dark lime), the selected-day cursor, the "Changes results" badge, the running status, and the PDF report. The "run maximum" stack is now neutral grey-green. The nitrate depth ramp keeps its gold→brown data colours.
+- **2026-10-05 (n)**: Trial white-on-green colour flip, added as a switchable scheme (app-bar toggle, remembered per browser). The green version recolours the app bar, stepper, results header, date filter and Set Management header; content stays white. White remains the default until the user picks one.
+- **2026-10-05 (m)**: The address search bar hides once a location is selected and reappears when the Set Management panel is closed.
+- **2026-10-05 (l)**: Portrait map reduced about 15% at user request (`SHEET_SHARE` 60 → 66).
+- **2026-10-05 (k)**: Portrait phones: after picking a field, the map shrinks to the top ~40% of the area and the form sheet takes the bottom 60%, so the pin stays visible (via `keepInView`). The stepper is condensed on phones (single row, current step named only). The sheet uses a dense panel and a top shadow.
+- **2026-10-05 (j)**: Landscape-phone layout. The Set Management panel and map split 50/50 when the screen is landscape and ≤ 600 px tall, with the stepper hidden, a slimmer header with menu-button nav, and a dense panel. The map now pans to keep the pin visible beside the panel (all layouts). Pulled the user's updated `src/assets/salus-logo.webp` from their folder.
+- **2026-10-05 (i)**: PDF run reports in the app. My Runs has a per-row PDF button and PDF items in the grid's Export menu (selected / all completed). Generated in the browser with `@react-pdf/renderer` (lazy-loaded), matching the mock-up. Tightened grid column widths so the actions column fits at laptop widths; Created now shows the date only.
+- **2026-10-05 (h)**: Added a printable run-report PDF mock-up in `design/report-mockup/` (not wired into My Runs yet).
+- **2026-10-05 (g)**: Replaced the placeholder header icon with the SALUS leaf logo supplied by the user. Added a favicon (`public/favicon.png`, generated from the logo).
+- **2026-10-05 (f)**: Removed the amber pin from the results-header mini-map (the enlarged dialog still shows it). Map page: added an address search bar (Nominatim), made the instructions card closable with a "?" button to bring it back (remembered per browser).
+- **2026-10-05 (e)**: Flipped the Soil Nitrate Profile axes (depth on x, concentration on y; prop renamed `xMax` → `yMax`). Widened the gauge charts' y-axis so 4-digit values aren't clipped.
+- **2026-10-05 (d)**: Added a field mini-map at the top-left of the Results header; clicking it opens a large map dialog (`FieldMiniMap`, `FieldMap static` prop).
+- **2026-10-05 (c)**: The user said Run Management and Set Management are the same thing, so the flow is now **3 steps**. Merged the run name, test dataset and years into a single **Set Management panel** that slides over the map (`SetManagementPanel` in a Drawer). Removed `RunSetupPage`, `ManagementPage`, `components/wizard/*` and `RunDraftContext`. Irrigation and the dataset are now two-way synced.
+- **2026-10-05 (b)** _(superseded by c)_: Added wizard step 2 **Run Management** (`/new/run`) between the map and Set Management. Added a test-dataset catalogue that sets form defaults and limits years, plus the draft context and stepper. Moved the run name and years out of the management form. Renamed the runs grid to **My Runs**. Results are trimmed to the chosen years. Removed `NewRunPage` (replaced by `RunSetupPage` + `ManagementPage`).
+- **2026-10-05**: Initial Spartan White rebuild (this session). Replaced the other agent's nshow-react prototype and concept deck.
