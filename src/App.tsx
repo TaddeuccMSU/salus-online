@@ -15,6 +15,13 @@ import RunsPage from './pages/RunsPage';
 import ResultsPage from './pages/ResultsPage';
 import { AboutPage, ContactPage, ReviewPage } from './pages/InfoPages';
 
+/**
+ * Sub-folder hosting (e.g. GitHub Pages at /salus-online/): routes live under
+ * Vite's base path. Root hosting ('/') and the standalone file ('./') need none.
+ */
+const BASE = import.meta.env.BASE_URL;
+const basename = BASE.startsWith('/') && BASE !== '/' ? BASE.replace(/\/$/, '') : undefined;
+
 const router = createBrowserRouter([
   {
     element: <AppShell />,
@@ -31,7 +38,7 @@ const router = createBrowserRouter([
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-]);
+], { basename });
 
 export default function App() {
   return <RouterProvider router={router} />;
