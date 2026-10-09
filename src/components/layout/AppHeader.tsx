@@ -19,6 +19,7 @@ import SettingsButton from '../settings/SettingsButton';
 import { AllChartColoursSetting, ColourSchemeSetting, DarkModeSetting } from '../settings/ColourSettings';
 import TextSizeSetting from '../settings/TextSizeSetting';
 import StepsBarSetting from '../settings/StepsBarSetting';
+import AppVersion from '../settings/AppVersion';
 import { useTextSize } from '../../state/TextSizeContext';
 import { NavLink, Link as RouterLink } from 'react-router-dom';
 import { AppBar, Box, Button, Divider, IconButton, Menu, MenuItem, Toolbar, Typography, useMediaQuery } from '@mui/material';
@@ -92,6 +93,8 @@ export default function AppHeader() {
             <StepsBarSetting />
             <Divider />
             <AllChartColoursSetting />
+            <Divider />
+            <AppVersion />
           </SettingsButton>
         </Box>
 

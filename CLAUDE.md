@@ -46,7 +46,7 @@ npm install
 npm run dev         # http://localhost:5173
 npm run typecheck   # tsc --noEmit (strict mode, must stay clean)
 npm run build       # typecheck + vite build → dist/
-npm run build:pages # same, for GitHub Pages at /salus-online/ (+ 404.html, .nojekyll)
+npm run build:pages # same, for GitHub Pages at /salus-online/ (+ 404.html, .nojekyll, offline sw.js)
 ```
 
 Optional `.env` (copy `.env.example`): `VITE_MAPTILER_KEY=...` switches the map to
@@ -279,6 +279,23 @@ MapLibre v6 decodes vector tiles (the **Streets** basemap) in a separate worker 
 5. Accessibility: phases 1–2 of the audit are done (z17); next are screen-reader / device testing and an accessible HTML report (phase 3).
 
 ## 9. Changelog
+- **2026-10-09 (z41)**: **Version line in Settings.** The bottom of the top-bar ⚙ Settings pop-out now shows a small caption, "SALUS Online prototype · v0.3.0 · built Oct 9, 2026" (`settings/AppVersion.tsx`). The version comes from `package.json`, now **0.3.0**; bump it for each release. The date is the build date. Both are injected by `define` in `vite.config.ts` (`__APP_VERSION__`, `__BUILD_DATE__`, declared in `src/env.d.ts`). The standalone build's `vite.config.ts` defines them too, reading `../salus-online/package.json`. This lets testers tell which build an installed offline copy is running.
+- **2026-10-09 (z40)**: **Installable, works offline (GitHub Pages build only).** The Pages site can be added to a phone or tablet home screen ("Add to Home Screen" in Safari, "Install app" in Chrome) and then opens without a connection. New pieces:
+  - `public/manifest.webmanifest`, with name "SALUS Online (prototype)", Spartan Green theme and `start_url`/`scope` `./`.
+  - App icons in `public/icons/` (192, 512, maskable 512 and the Apple touch icon, made from `design/salus-logo-original.webp`).
+  - Manifest, theme-colour and Apple meta tags in `index.html`.
+  - `src/pwa.ts` registers `sw.js` only when Vite's `MODE` is `pages` (`build:pages` now runs `vite build --mode pages`).
+  - `scripts/make-sw.mjs` writes `dist/sw.js` after the build.
+
+  How the service worker behaves:
+  - It saves every build file on install: app code, fonts, mock data, report assets and icons.
+  - Page loads go to the network with a 4-second limit and fall back to the saved app.
+  - The app's own files are served from the saved copy.
+  - Esri map tiles that have been viewed are kept (newest 3,000), so fields already seen still show offline.
+  - Address search needs a connection.
+  - Each build gets its own versioned cache, and old ones are deleted.
+
+  The dev server, `npm run build` and the standalone file are unchanged; the registration code is stripped from them. Tested under `/salus-online/`: the service worker installs (29 files saved), then offline the results deep link, My Runs cards, PDF download and the map page all work. Note: Esri's terms limit offline use of its imagery. That's fine for internal testing; review it before any public release.
 - **2026-10-09 (z39)**: **GitHub Pages build.** The repo is `github.com/TaddeuccMSU/salus-online` (private by default). New `npm run build:pages` builds with base `/salus-online/` (the project-page address `https://taddeuccmsu.github.io/salus-online/`) and runs `scripts/pages-404.mjs`, which copies `index.html` to `404.html` (so deep links like `/salus-online/runs` load the app) and writes `.nojekyll`. `App.tsx` passes `basename` from Vite's `BASE_URL` to the router when the base is a sub-folder (none for `/` or the standalone build's `./`). Data, fonts and the report logo already used `BASE_URL`. Tested under `/salus-online/`: results deep link, nav, PDF download and map all work. **Deployment:** the built `dist/` is pushed as the `gh-pages` branch, and Pages serves that branch (Settings → Pages → Deploy from a branch → `gh-pages` / root). On GitHub Free, Pages only works while the repo is public.
 - **2026-10-09 (z38)**: **All results data in the repo is now MOCK** (before pushing to GitHub). `public/data/east-lansing-{rainfed,irrigated}.json` were real SALUS output. They are replaced by the synthetic data from the walkthrough deck: invented numbers in the same `RunResults` shape, 2010–2014, from the new **`scripts/make_sample_data.py`** (seeds 11 and 23, so `python3 scripts/make_sample_data.py public/data` reproduces them exactly). Places, coordinates, run names, demo pins and form defaults are unchanged, and everything works as before. Wording that claimed real SALUS output now says mock sample data: the Set Management demo notice and dataset description, the Help tour's dataset step, the PDF report footer and its "About this report", and the code comments and docs. `design/report-mockup/salus-run-report-sample.pdf` was regenerated from the mock irrigated data (`make_report.py` now labels it as mock). The standalone build was re-synced and rebuilt, so the shared HTML and zips now carry mock data only. README has a "Data: everything here is MOCK" section.
 - **2026-10-09 (z37)**: **My Runs on phones held upright shows cards instead of the grid.** When the screen is ≤ 600 px wide and in portrait, `RunsPage` swaps the DataGrid for the new `components/runs/RunCardList.tsx`. Each card shows the run name (with a `StatusChip` if the run isn't finished), the place, a settings line (soil · N rate in the current units · water · years) and the created date. The card's buttons are **View results** (full width), Results tables, PDF report and a ⋮ menu with Delete…; all are 44 px touch targets and are disabled until the run is complete. Above the cards is a toolbar (`runs-toolbar`) with search, Sort (Newest / Oldest / Name A–Z) and Export (⤓: CSV of the list, PDF for the ticked runs, PDFs for all completed runs). Below it are **Select all** (with a mixed state) and a run count. The list shows 10 cards, then "Show more". Selection uses the same model as the grid, so the existing selection bar and bulk delete still work, and rotating the phone keeps the ticked runs (the grid comes back in landscape). Help exporting tour on phones: new `phoneBody` text, and the PDF step now points at the first finished card's PDF button (`runs-pdf`; the `phoneTarget` was removed). axe: 0 violations, light and dark.
