@@ -8,15 +8,17 @@
  *    field (within ~250 m), parameters that changed since it are highlighted
  *    in lime with the old value in a tooltip, so you can see what a re-run
  *    changed.
- * 2. "Results over N years": Best / Average / Median / Worst / Total per
+ * 2. "Results over N years" (collapsible), as a Table or as Cards (one card
+ *    per measure; a Show filter picks which statistics the cards list):
+ *    Best / Average / Median / Worst / Total per
  *    measure, in an MUI X DataGrid (CSV export in its toolbar). The numbers
  *    come from data/resultsSummary.ts and are MOCK in this demo.
  *
  * It renders in the base (white / dark) theme even though it sits inside the
  * green results banner, like the other dialogs and pop-overs there.
  */
-import { useMemo } from 'react';
-import { alpha, Box, Button, Collapse, ThemeProvider, Tooltip, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
+import { alpha, Box, Button, Collapse, ThemeProvider, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -88,6 +90,35 @@ export function previousRunAtField(run: Run, runs: Run[]): Run | undefined {
 /** Accent for the table's shading (Spartan Green tints). */
 const GREEN = tokens.color.spartanGreen;
 
+/** The statistics columns, in table order (also the Cards view's "Show" filter). */
+const STAT_COLUMNS = [
+  { key: 'best', label: 'Best' },
+  { key: 'avg', label: 'Average' },
+  { key: 'median', label: 'Median' },
+  { key: 'worst', label: 'Worst' },
+  { key: 'total', label: 'Total' },
+] as const;
+type StatKey = (typeof STAT_COLUMNS)[number]['key'];
+type SummaryView = 'table' | 'cards';
+const VIEW_KEY = 'salus-online.resultsSummaryView.v1';
+const STATS_KEY = 'salus-online.resultsSummaryStats.v1';
+/** Cards start with three statistics so each card stays short; the filter adds or removes them. */
+const DEFAULT_STATS: StatKey[] = ['best', 'avg', 'worst'];
+
+/** Reads a remembered choice (browser storage may be blocked or hold old data). */
+function load<T>(key: string, ok: (v: unknown) => v is T, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    const v: unknown = raw ? JSON.parse(raw) : undefined;
+    return ok(v) ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function save(key: string, v: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage blocked: choice lasts this visit */ }
+}
+
 const fmt = (v: number | null) => (v === null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onToggleTable, onNewManagement }: Props) {
@@ -95,6 +126,13 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const c = useColors();
   const { units } = useUnits();
   const dark = theme.palette.mode === 'dark';
+  // Table or Cards (phones held upright start with Cards); which statistics the cards show. Both remembered.
+  const phone = useMediaQuery('(max-width: 600px) and (orientation: portrait)');
+  const [savedView, setSavedView] = useState<SummaryView | null>(() => load<SummaryView | null>(VIEW_KEY, (v): v is SummaryView => v === 'table' || v === 'cards', null));
+  const view: SummaryView = savedView ?? (phone ? 'cards' : 'table');
+  const chooseView = (v: SummaryView) => { setSavedView(v); save(VIEW_KEY, v); };
+  const [stats, setStats] = useState<StatKey[]>(() => load(STATS_KEY, (v): v is StatKey[] => Array.isArray(v) && v.length > 0 && v.every((k) => STAT_COLUMNS.some((s) => s.key === k)), DEFAULT_STATS));
+  const chooseStats = (v: StatKey[]) => { setStats(v); save(STATS_KEY, v); };
 
   const params = runParameters(run, units);
   const prev = previousRunAtField(run, runs);
@@ -167,6 +205,51 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}
           <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
+            {/* View: Table (DataGrid) or Cards (one card per measure, showing only the chosen statistics). */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
+              <ToggleButtonGroup exclusive size="small" value={view} onChange={(_, v: SummaryView | null) => v && chooseView(v)} aria-label="Results view">
+                <ToggleButton value="table">Table</ToggleButton>
+                <ToggleButton value="cards">Cards</ToggleButton>
+              </ToggleButtonGroup>
+              {view === 'cards' && (
+                <>
+                  <Typography id="summary-stats-label" variant="body2" sx={{ fontWeight: 600, ml: { sm: 1 } }}>Show:</Typography>
+                  {/* Multi-select filter; at least one statistic stays on. */}
+                  <ToggleButtonGroup
+                    size="small" value={stats} aria-labelledby="summary-stats-label" sx={{ flexWrap: 'wrap', gap: 0.5 }}
+                    onChange={(_, v: StatKey[]) => v.length && chooseStats(STAT_COLUMNS.map((s) => s.key).filter((k) => v.includes(k)))}
+                  >
+                    {STAT_COLUMNS.map((s) => <ToggleButton key={s.key} value={s.key}>{s.label}</ToggleButton>)}
+                  </ToggleButtonGroup>
+                </>
+              )}
+            </Box>
+            {view === 'cards' ? (
+              <Box component="ul" aria-label={`Results summary over ${nYears} years`} sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                {rows.map((r) => {
+                  const shown = STAT_COLUMNS.filter((s) => stats.includes(s.key) && r[s.key] !== null);
+                  return (
+                    <Box component="li" key={r.id} sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: alpha(GREEN, dark ? 0.6 : 0.25), bgcolor: alpha(GREEN, dark ? 0.25 : 0.05) }}>
+                      <Typography component="h3" sx={{ px: 1.5, py: 1, fontWeight: 700, fontSize: '0.9375rem', bgcolor: alpha(GREEN, dark ? 0.55 : 0.16) }}>{r.metric}</Typography>
+                      {shown.length ? (
+                        <Box component="dl" sx={{ m: 0, px: 1.5, py: 1, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 0.5 }}>
+                          {shown.map((s) => (
+                            <Box key={s.key} sx={{ display: 'contents' }}>
+                              <Typography component="dt" variant="body2" color="text.secondary">{s.label}</Typography>
+                              <Typography component="dd" variant="body2" sx={{ m: 0, textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r[s.key])}</Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, py: 1 }}>
+                          Only {STAT_COLUMNS.filter((s) => r[s.key] !== null).map((s) => s.label.toLowerCase()).join(' / ')} for this measure.
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Box>
+            ) : (
             <DataGrid
               rows={rows}
               columns={columns}
@@ -189,6 +272,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 '& .MuiDataGrid-row:hover .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.7 : 0.22) },
               }}
             />
+            )}
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
               Demo: mock numbers. N leaching follows the sample&apos;s daily data; yield, water balance, emissions and soil values are invented for this prototype.
               Best and worst follow what is better for each measure (e.g. lowest leaching, highest yield).
