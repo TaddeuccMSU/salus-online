@@ -37,7 +37,7 @@ export const TILLAGE = [
   { value: 'moldboard', label: 'Moldboard plow' },
 ] as const;
 
-export const MATURITY = [80, 85, 90, 95, 100, 105, 110, 115, 120].map((d) => ({
+export const MATURITY = [100, 110, 120].map((d) => ({
   value: d,
   label: `${d}-day corn`,
 }));
