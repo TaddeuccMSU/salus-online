@@ -23,7 +23,7 @@ import DemoNoticeText from '../form/DemoNotice';
 import { useColors } from '../../theme/colors';
 import { useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import { Alert, Box, Button, Divider, IconButton, Slider, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Divider, IconButton, MenuItem, Select, Slider, TextField, Tooltip, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -50,6 +50,9 @@ interface Props {
   /** Change (to a new number) to move keyboard focus to the panel's heading (field picked by keyboard). */
   focusKey?: number;
 }
+
+/** Simulation lengths offered in the "How many years" select (plus "All"). */
+const YEAR_CHOICES = [5, 10, 15, 20, 25, 30, 35];
 
 /** Fresh answers for a new run, seeded from the first test dataset. */
 function initialSetup(placeName: string): RunSetup {
@@ -96,6 +99,25 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
     const d = getDataset(id);
     setInputs(d.defaults);
     setSetup((s) => ({ ...s, datasetId: id }));
+  };
+
+  /**
+   * Simulation length picker ("How many years…?"): 5–35 years in 5-year steps,
+   * or all of 1980–2021. Picking a length keeps the last year where it is and
+   * moves the first year (sliding the window right if it would pass 1980).
+   * Dragging the slider to another length shows "Custom".
+   */
+  const ALL_YEARS = LAST_WEATHER_YEAR - FIRST_WEATHER_YEAR + 1;
+  const durationValue = years === ALL_YEARS ? 'all' : YEAR_CHOICES.includes(years) ? String(years) : 'custom';
+  const chooseDuration = (choice: string) => {
+    const n = choice === 'all' ? ALL_YEARS : Number(choice);
+    let end = setup.endYear;
+    let start = end - n + 1;
+    if (start < FIRST_WEATHER_YEAR) {
+      start = FIRST_WEATHER_YEAR;
+      end = start + n - 1;
+    }
+    setSetup({ ...setup, startYear: start, endYear: end });
   };
 
   /** Form edits: keep the dataset matched to answers that drive results (irrigation). */
@@ -165,7 +187,16 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
         <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={3} />
 
         <FormSection id="period" step={6} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}. Demo results only cover ${dataset.firstYear}–${dataset.lastYear}; years outside that show the whole sample.`}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <Typography id="sim-years-label" sx={{ fontWeight: 600, flex: 1, minWidth: 200 }}>How many years would you like to run SALUS?</Typography>
+            <Select size="small" labelId="sim-years-label" value={durationValue} onChange={(e) => chooseDuration(e.target.value)} sx={{ minWidth: 112 }}>
+              {YEAR_CHOICES.map((n) => <MenuItem key={n} value={String(n)}>{n}</MenuItem>)}
+              <MenuItem value="all">All</MenuItem>
+              {durationValue === 'custom' && <MenuItem value="custom" disabled>Custom</MenuItem>}
+            </Select>
+          </Box>
           <Box sx={{ px: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Drag the handles below to change the time range.</Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography sx={{ fontWeight: 600 }}>{setup.startYear} – {setup.endYear}</Typography>
               <Typography color="text.secondary">{years} year{years > 1 ? 's' : ''}</Typography>
