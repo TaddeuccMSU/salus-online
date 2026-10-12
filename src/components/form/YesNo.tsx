@@ -5,10 +5,12 @@
  * toggle buttons. `helper` shows a short explanation under the question;
  * `info` adds a "more info" link after the question that shows the text in a
  * tooltip (hover, keyboard focus, or tap on phones);
- * `badge` adds a lime "Changes results" chip (used for answers that
+ * `badge` adds a lime "Changes results" chip (hover or focus it for the
+ * Demo mode explanation, DemoNotice.tsx; used for answers that
  * switch the test dataset).
  */
 import { useColors } from '../../theme/colors';
+import DemoNoticeText from './DemoNotice';
 import { Box, ButtonBase, Chip, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
 
 interface Props {
@@ -44,7 +46,11 @@ export default function YesNo({ label, helper, info, value, onChange, yesLabel =
               </ButtonBase>
             </Tooltip>
           )}
-          {badge && <Chip size="small" label="Changes results" sx={{ ml: 1, height: 20, bgcolor: c.accentSoft, color: c.accentDark, fontWeight: 700 }} />}
+          {badge && (
+            <Tooltip title={<DemoNoticeText />} describeChild arrow enterTouchDelay={0} leaveTouchDelay={8000}>
+              <Chip size="small" label="Changes results" tabIndex={0} sx={{ ml: 1, height: 20, bgcolor: c.accentSoft, color: c.accentDark, fontWeight: 700, cursor: 'help' }} />
+            </Tooltip>
+          )}
         </Typography>
         {helper && <Typography variant="body2" color="text.secondary">{helper}</Typography>}
       </Box>

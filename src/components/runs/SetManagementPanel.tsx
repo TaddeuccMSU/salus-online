@@ -19,6 +19,7 @@
  * A ⚙ in the header switches the answers between Metric and US units (the
  * same global setting as the results charts).
  */
+import DemoNoticeText from '../form/DemoNotice';
 import { useColors } from '../../theme/colors';
 import { useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
@@ -157,10 +158,7 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
 
         <FormSection id="dataset" step={2} title="Test dataset" description="The sample results your run will show.">
           <Alert severity="info" variant="outlined" sx={{ py: 0 }}>
-            <strong>Demo mode:</strong> live SALUS runs aren't connected yet. Results are mock sample data
-            (invented numbers for this prototype, not SALUS output) placed at the MSU Agronomy Farm, and the
-            answers below start from the sample's settings. Only
-            <strong> Irrigation</strong> changes the results; everything else is saved with the run.
+            <DemoNoticeText />
           </Alert>
           <DatasetPicker datasets={TEST_DATASETS} value={setup.datasetId} onChange={chooseDataset} columns={1} />
           <Button size="small" startIcon={<RestartAltIcon />} onClick={() => chooseDataset(setup.datasetId)} sx={{ alignSelf: 'flex-start' }}>
