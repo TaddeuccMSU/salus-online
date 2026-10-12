@@ -8,7 +8,7 @@
  *   3 Field & soil  ┐
  *   4 Crop & planting ├ SetManagementForm (pre-filled from the dataset)
  *   5 Water & nitrogen┘
- *   6 Simulation period  year slider limited to the dataset's years
+ *   6 Simulation period  year slider, 1980–2021 (FIRST/LAST_WEATHER_YEAR)
  *   [Cancel]                                     [▶ Run SALUS]
  *
  * Demo-mode rule: picking a dataset loads its management answers, and the
@@ -19,16 +19,18 @@
  * A ⚙ in the header switches the answers between Metric and US units (the
  * same global setting as the results charts).
  */
+import DemoNoticeText from '../form/DemoNotice';
 import { useColors } from '../../theme/colors';
 import { useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import { Alert, Box, Button, Divider, IconButton, Slider, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Divider, IconButton, MenuItem, Select, Slider, TextField, Tooltip, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FormSection from '../form/FormSection';
 import DatasetPicker from '../form/DatasetPicker';
 import SetManagementForm, { summarize, validate } from '../form/SetManagementForm';
+import { DEFAULT_END_YEAR, DEFAULT_START_YEAR, FIRST_WEATHER_YEAR, LAST_WEATHER_YEAR } from '../../data/options';
 import { RESULT_DRIVING_FIELDS, TEST_DATASETS, datasetForInputs, getDataset } from '../../data/datasets';
 import { formatLatLng } from '../../hooks/useReverseGeocode';
 import type { LatLng, ManagementInputs, RunSetup } from '../../types';
@@ -49,6 +51,9 @@ interface Props {
   focusKey?: number;
 }
 
+/** Simulation lengths offered in the "How many years" select (plus "All"). */
+const YEAR_CHOICES = [5, 10, 15, 20, 25, 30, 35];
+
 /** Fresh answers for a new run, seeded from the first test dataset. */
 function initialSetup(placeName: string): RunSetup {
   const d = TEST_DATASETS[0];
@@ -56,8 +61,8 @@ function initialSetup(placeName: string): RunSetup {
     name: `${placeName || 'My field'} — ${dayjs().format('MMM D, YYYY')}`,
     description: '',
     datasetId: d.id,
-    startYear: d.firstYear,
-    endYear: d.lastYear,
+    startYear: DEFAULT_START_YEAR,
+    endYear: DEFAULT_END_YEAR,
   };
 }
 
@@ -89,16 +94,30 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
   const invalid = Object.keys(errors).length > 0 || !!nameError;
   const years = setup.endYear - setup.startYear + 1;
 
-  /** Pick a dataset: load its management answers and clamp the years into its range. */
+  /** Pick a dataset: load its management answers. The chosen years are kept (any of 1980–2021). */
   const chooseDataset = (id: string) => {
     const d = getDataset(id);
     setInputs(d.defaults);
-    setSetup((s) => ({
-      ...s,
-      datasetId: id,
-      startYear: Math.max(d.firstYear, Math.min(s.startYear, d.lastYear)),
-      endYear: Math.min(d.lastYear, Math.max(s.endYear, d.firstYear)),
-    }));
+    setSetup((s) => ({ ...s, datasetId: id }));
+  };
+
+  /**
+   * Simulation length picker ("How many years…?"): 5–35 years in 5-year steps,
+   * or all of 1980–2021. Picking a length keeps the last year where it is and
+   * moves the first year (sliding the window right if it would pass 1980).
+   * Dragging the slider to another length shows "Custom".
+   */
+  const ALL_YEARS = LAST_WEATHER_YEAR - FIRST_WEATHER_YEAR + 1;
+  const durationValue = years === ALL_YEARS ? 'all' : YEAR_CHOICES.includes(years) ? String(years) : 'custom';
+  const chooseDuration = (choice: string) => {
+    const n = choice === 'all' ? ALL_YEARS : Number(choice);
+    let end = setup.endYear;
+    let start = end - n + 1;
+    if (start < FIRST_WEATHER_YEAR) {
+      start = FIRST_WEATHER_YEAR;
+      end = start + n - 1;
+    }
+    setSetup({ ...setup, startYear: start, endYear: end });
   };
 
   /** Form edits: keep the dataset matched to answers that drive results (irrigation). */
@@ -157,10 +176,7 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
 
         <FormSection id="dataset" step={2} title="Test dataset" description="The sample results your run will show.">
           <Alert severity="info" variant="outlined" sx={{ py: 0 }}>
-            <strong>Demo mode:</strong> live SALUS runs aren't connected yet. Results are mock sample data
-            (invented numbers for this prototype, not SALUS output) placed at the MSU Agronomy Farm, and the
-            answers below start from the sample's settings. Only
-            <strong> Irrigation</strong> changes the results; everything else is saved with the run.
+            <DemoNoticeText />
           </Alert>
           <DatasetPicker datasets={TEST_DATASETS} value={setup.datasetId} onChange={chooseDataset} columns={1} />
           <Button size="small" startIcon={<RestartAltIcon />} onClick={() => chooseDataset(setup.datasetId)} sx={{ alignSelf: 'flex-start' }}>
@@ -170,18 +186,28 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
 
         <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={3} />
 
-        <FormSection id="period" step={6} title="Simulation period" description={`Weather is available for ${dataset.firstYear}–${dataset.lastYear} in this dataset.`}>
+        <FormSection id="period" step={6} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}.`}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <Typography id="sim-years-label" sx={{ fontWeight: 600, flex: 1, minWidth: 200 }}>How many years would you like to run SALUS?</Typography>
+            <Select size="small" labelId="sim-years-label" value={durationValue} onChange={(e) => chooseDuration(e.target.value)} sx={{ minWidth: 112 }}>
+              {YEAR_CHOICES.map((n) => <MenuItem key={n} value={String(n)}>{n}</MenuItem>)}
+              <MenuItem value="all">All</MenuItem>
+              {durationValue === 'custom' && <MenuItem value="custom" disabled>Custom</MenuItem>}
+            </Select>
+          </Box>
           <Box sx={{ px: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Drag the handles below to change the time range.</Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography sx={{ fontWeight: 600 }}>{setup.startYear} – {setup.endYear}</Typography>
               <Typography color="text.secondary">{years} year{years > 1 ? 's' : ''}</Typography>
             </Box>
             <Slider
               value={[setup.startYear, setup.endYear]}
-              min={dataset.firstYear}
-              max={dataset.lastYear}
+              min={FIRST_WEATHER_YEAR}
+              max={LAST_WEATHER_YEAR}
               step={1}
-              marks={Array.from({ length: dataset.lastYear - dataset.firstYear + 1 }, (_, i) => ({ value: dataset.firstYear + i, label: String(dataset.firstYear + i) }))}
+              // Labels every 10 years plus the last year (2020 is skipped so it doesn't collide with 2021).
+              marks={[1980, 1990, 2000, 2010, LAST_WEATHER_YEAR].map((y) => ({ value: y, label: String(y) }))}
               disableSwap
               onChange={(_, v) => {
                 const [a, b] = v as number[];

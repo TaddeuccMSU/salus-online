@@ -6,13 +6,14 @@
  * SALUS results shape, made by scripts/make_sample_data.py (no real SALUS
  * output is in this repo). Each entry records the years it covers and the
  * management answers it stands for; the wizard uses those to set
- * defaults and limit choices (e.g. years can't go outside 2010–2014).
+ * defaults. The files cover 1980–2021, all the years the form offers; each
+ * run's years are cut out with sliceResults().
  *
  * To add a dataset: drop its JSON (RunResults shape) in /public/data and add
  * an entry here.
  */
 import type { ManagementInputs, TestDataset } from '../types';
-import { DEFAULT_INPUTS } from './options';
+import { DEFAULT_INPUTS, FIRST_WEATHER_YEAR, LAST_WEATHER_YEAR } from './options';
 
 const MSU_FARM = { lat: 42.7095, lng: -84.4706 };
 
@@ -39,8 +40,8 @@ export const TEST_DATASETS: TestDataset[] = [
     description: 'Continuous corn, no irrigation. Shows how rain alone moves nitrate through the profile.',
     site: 'MSU Agronomy Farm, East Lansing, MI',
     location: MSU_FARM,
-    firstYear: 2010,
-    lastYear: 2014,
+    firstYear: FIRST_WEATHER_YEAR,
+    lastYear: LAST_WEATHER_YEAR,
     resultsFile: 'east-lansing-rainfed.json',
     defaults: { ...EAST_LANSING_BASE, irrigate: false },
   },
@@ -50,8 +51,8 @@ export const TEST_DATASETS: TestDataset[] = [
     description: 'Same field with automatic irrigation. Higher uptake, but watch for leaching after heavy water.',
     site: 'MSU Agronomy Farm, East Lansing, MI',
     location: MSU_FARM,
-    firstYear: 2010,
-    lastYear: 2014,
+    firstYear: FIRST_WEATHER_YEAR,
+    lastYear: LAST_WEATHER_YEAR,
     resultsFile: 'east-lansing-irrigated.json',
     defaults: { ...EAST_LANSING_BASE, irrigate: true },
   },

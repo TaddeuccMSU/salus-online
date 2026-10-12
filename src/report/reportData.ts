@@ -8,6 +8,7 @@
  * - totals for the "Key results" tiles
  * - nitrate-profile snapshots on May 1 / Jul 1 / Oct 15 each year
  */
+import { sliceResults } from '../data/sliceResults';
 import type { DailyEvent, DailyResult, Run, RunResults } from '../types';
 import { factorOf, type UnitSystem } from '../theme/units';
 
@@ -46,21 +47,12 @@ export const SNAPSHOT_DATES = [
   { md: '10-15', title: 'Oct 15 (harvest)' },
 ];
 
-export function buildReportData(run: Run, results: RunResults): ReportData {
-  const from = `${run.setup.startYear}-01-01`;
-  const to = `${run.setup.endYear}-12-31`;
-  const inRange = (d: string) => d >= from && d <= to;
-  let days = results.days.filter((d) => inRange(d.date));
-  let events = results.events.filter((e) => inRange(e.date));
-  if (!days.length) {
-    days = results.days;
-    events = results.events;
-  }
-
-  // Running totals at the end of the year before the first year shown (0 if none).
-  const before = results.days.filter((d) => d.date < days[0].date);
-  let prevPlant = before.length ? before[before.length - 1].plantN : 0;
-  let prevLeach = before.length ? before[before.length - 1].leachN : 0;
+export function buildReportData(run: Run, fullResults: RunResults): ReportData {
+  // The run's years only, with running totals restarted on its first day (see sliceResults).
+  const results = sliceResults(fullResults, run.setup.startYear, run.setup.endYear);
+  const { days, events } = results;
+  let prevPlant = 0;
+  let prevLeach = 0;
 
   const years = [...new Set(days.map((d) => d.date.slice(0, 4)))];
   const annual: AnnualRow[] = years.map((year) => {

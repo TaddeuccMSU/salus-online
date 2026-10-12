@@ -24,13 +24,28 @@ export function soilDepthLabel(value: string, units: 'metric' | 'us'): string {
   return d ? (units === 'metric' ? d.metricLabel : d.label) : '';
 }
 
+/**
+ * Crops the form offers. Only corn for now, and it's hard-coded: the answer
+ * isn't saved with the run (SALUS Online runs are all corn). Add crops here
+ * and a `crop` field to ManagementInputs when more become available.
+ */
+export const CROPS = [{ value: 'corn', label: 'Corn' }] as const;
+
 export const TILLAGE = [
   { value: 'none', label: 'No tillage' },
-  { value: 'reduced', label: 'Reduced tillage' },
-  { value: 'conventional', label: 'Conventional tillage' },
+  { value: 'minimum', label: 'Minimum tillage' },
+  { value: 'moldboard', label: 'Moldboard plow' },
 ] as const;
 
-export const MATURITY = [80, 85, 90, 95, 100, 105, 110, 115, 120].map((d) => ({
+/** Planting months the form offers: April and May only (values match MONTHS). */
+export const PLANTING_MONTHS = [4, 5] as const;
+
+/** Number of days in a month (1–12); uses a non-leap year, so February is 28. */
+export function daysInMonth(month: number): number {
+  return new Date(2021, month, 0).getDate();
+}
+
+export const MATURITY = [100, 110, 120].map((d) => ({
   value: d,
   label: `${d}-day corn`,
 }));
@@ -40,9 +55,13 @@ export const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ].map((m, i) => ({ value: i + 1, label: m }));
 
-/** Weather history available to the model. */
-export const FIRST_WEATHER_YEAR = 1990;
-export const LAST_WEATHER_YEAR = 2025;
+/** Years the Simulation period slider offers (weather history available to the model). */
+export const FIRST_WEATHER_YEAR = 1980;
+export const LAST_WEATHER_YEAR = 2021;
+
+/** Years a new run (and the demo runs) start with. */
+export const DEFAULT_START_YEAR = 2010;
+export const DEFAULT_END_YEAR = 2014;
 
 /** Sensible defaults matching the live site's pre-filled form. */
 export const DEFAULT_INPUTS: ManagementInputs = {

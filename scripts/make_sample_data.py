@@ -8,7 +8,9 @@ as the app's RunResults (layers, maximums, days, events).
 
 Usage (from the project folder):  python3 scripts/make_sample_data.py public/data
 Writes east-lansing-rainfed.json (seed 11) and east-lansing-irrigated.json
-(seed 23), 2010-2014. Only the place names are real; every number is invented.
+(seed 23), 1980-2021 (the years the Simulation period slider offers).
+The app slices out each run's years and restarts the running totals there
+(src/data/sliceResults.ts). Only the place names are real; every number is invented.
 """
 import datetime as dt
 import json
@@ -17,7 +19,7 @@ import random
 import sys
 
 LAYERS = [(0, 2), (2, 7), (7, 15), (15, 26), (26, 40), (40, 57), (57, 77), (77, 100), (100, 125), (125, 150)]
-Y0, Y1 = 2010, 2014
+Y0, Y1 = 1980, 2021
 
 
 def make(irrigated: bool, seed: int):
@@ -70,6 +72,7 @@ def make(irrigated: bool, seed: int):
             leach_n += loss * 0.35
             depth_shift = min(1.0, depth_shift + 0.06)
         depth_shift = max(0.0, depth_shift - 0.002)
+        soil_n -= soil_n * 0.002  # slow losses (denitrification, immobilization) keep 42-year runs bounded
         soil_n = max(0.0, soil_n)
         # --- layer concentrations (mg N/kg): soil N spread over depth ---
         weights = []

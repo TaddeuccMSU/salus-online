@@ -16,7 +16,7 @@
 import { Box, Collapse, InputAdornment, MenuItem, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import type { ManagementInputs } from '../../types';
-import { MATURITY, MONTHS, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
+import { CROPS, MATURITY, MONTHS, PLANTING_MONTHS, daysInMonth, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
 import { useUnits } from '../../state/UnitsContext';
 import { fmtNum, inputFromDisplay, inputToDisplay, inputUnit, type UnitSystem } from '../../theme/units';
 import FormSection from './FormSection';
@@ -53,8 +53,8 @@ export function validate(v: ManagementInputs, units: UnitSystem = 'us'): Partial
   const rate = (n: number) => fmtNum(inputToDisplay('rate', n, units), 0);
   if (v.plantPopulation < 10000 || v.plantPopulation > 60000) e.plantPopulation = `Between ${pop(10000)} and ${pop(60000)} ${inputUnit('population', units)}`;
   if (v.inorganicFertilizer && (v.fertilizerRate <= 0 || v.fertilizerRate > 400)) e.fertilizerRate = `Between ${rate(1)} and ${rate(400)} ${inputUnit('rate', units)}`;
-  const daysInMonth = new Date(2021, v.plantingMonth, 0).getDate();
-  if (v.plantingDay < 1 || v.plantingDay > daysInMonth) e.plantingDay = `1–${daysInMonth}`;
+  const monthDays = daysInMonth(v.plantingMonth);
+  if (v.plantingDay < 1 || v.plantingDay > monthDays) e.plantingDay = `1–${monthDays}`;
   return e;
 }
 
@@ -74,7 +74,6 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
   const { units } = useUnits();
   const shownPopulation = Math.round(inputToDisplay('population', v.plantPopulation, units));
   const shownRate = Math.round(inputToDisplay('rate', v.fertilizerRate, units) * 10) / 10;
-  const typicalPop = units === 'metric' ? 'Typical: 74,000–94,000' : 'Typical: 30,000–38,000';
   const drives = (k: keyof ManagementInputs) => drivers.includes(k);
 
   return (
@@ -102,6 +101,13 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
 
       <FormSection id="crop" step={firstStep + 1} title="Crop & planting" description="Corn hybrid, stand and planting date.">
         <Box>
+          {/* Crop: corn is the only option for now (hard-coded; not stored with the run). */}
+          <Typography id="crop-label" sx={{ fontWeight: 600, mb: 1 }}>Crop</Typography>
+          <ToggleButtonGroup exclusive value="corn" aria-labelledby="crop-label">
+            {CROPS.map((o) => <ToggleButton key={o.value} value={o.value} sx={{ minWidth: 96 }}>{o.label}</ToggleButton>)}
+          </ToggleButtonGroup>
+        </Box>
+        <Box>
           <Typography sx={{ fontWeight: 600, mb: 1 }}>Corn grown for</Typography>
           <ToggleButtonGroup exclusive value={v.cornUse} onChange={(_, t) => t && set('cornUse', t)}>
             <ToggleButton value="grain" sx={{ minWidth: 96 }}>Grain</ToggleButton>
@@ -113,7 +119,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             <TextField
               fullWidth type="number" label="Plant population" value={shownPopulation}
               onChange={(e) => set('plantPopulation', inputFromDisplay('population', Number(e.target.value), units))}
-              error={!!errors.plantPopulation} helperText={errors.plantPopulation ?? typicalPop}
+              error={!!errors.plantPopulation} helperText={errors.plantPopulation}
               slotProps={{ input: { endAdornment: <InputAdornment position="end">{inputUnit('population', units)}</InputAdornment> }, htmlInput: { step: units === 'metric' ? 1000 : 500, min: 0 } }}
             />
           </Grid>
@@ -123,25 +129,34 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             </TextField>
           </Grid>
           <Grid size={{ xs: 8, sm: 6 }}>
-            <TextField select fullWidth label="Planting month" value={v.plantingMonth} onChange={(e) => set('plantingMonth', Number(e.target.value))}>
-              {MONTHS.slice(2, 7).map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+            {/* Changing the month keeps the day if it exists in the new month, else uses that month's last day. */}
+            <TextField
+              select fullWidth label="Planting month" value={v.plantingMonth}
+              onChange={(e) => {
+                const month = Number(e.target.value);
+                onChange({ ...v, plantingMonth: month, plantingDay: Math.min(v.plantingDay, daysInMonth(month)) });
+              }}
+            >
+              {MONTHS.filter((o) => (PLANTING_MONTHS as readonly number[]).includes(o.value)).map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid size={{ xs: 4, sm: 6 }}>
+            {/* Day: a list of the selected month's days (30 for April, 31 for May). */}
             <TextField
-              fullWidth type="number" label="Day" value={v.plantingDay}
+              select fullWidth label="Day" value={v.plantingDay}
               onChange={(e) => set('plantingDay', Number(e.target.value))}
               error={!!errors.plantingDay} helperText={errors.plantingDay}
-              slotProps={{ htmlInput: { min: 1, max: 31 } }}
-            />
+            >
+              {Array.from({ length: daysInMonth(v.plantingMonth) }, (_, i) => i + 1).map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+            </TextField>
           </Grid>
         </Grid>
-        <YesNo label="Winter cover crop" helper="A cereal rye cover crop after harvest." value={v.coverCrop} onChange={(b) => set('coverCrop', b)} />
+        <YesNo label="Do you grow a cover crop over the winter?" value={v.coverCrop} onChange={(b) => set('coverCrop', b)} />
       </FormSection>
 
       <FormSection id="nitrogen" step={firstStep + 2} title="Water & nitrogen" description="Inputs that drive nitrate leaching and N-use efficiency.">
-        <YesNo label="Irrigation" helper="SALUS irrigates automatically when soil water runs low." value={v.irrigate} onChange={(b) => set('irrigate', b)} badge={drives('irrigate')} />
-        <YesNo label="Inorganic fertilizer" value={v.inorganicFertilizer} onChange={(b) => set('inorganicFertilizer', b)} />
+        <YesNo label="Irrigation" value={v.irrigate} onChange={(b) => set('irrigate', b)} badge={drives('irrigate')} />
+        <YesNo label="Inorganic fertilizer" info="split fertilizer application (at planting plus a side dressing)" value={v.inorganicFertilizer} onChange={(b) => set('inorganicFertilizer', b)} />
         <Collapse in={v.inorganicFertilizer} unmountOnExit>
           <Grid container spacing={2} sx={{ pl: { sm: 2 }, borderLeft: { sm: '2px solid' }, borderColor: { sm: 'divider' } }}>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -161,7 +176,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             </Grid>
           </Grid>
         </Collapse>
-        <YesNo label="Manure or compost" value={v.manure} onChange={(b) => set('manure', b)} />
+        <YesNo label="Apply manure or compost" value={v.manure} onChange={(b) => set('manure', b)} />
       </FormSection>
 
     </Box>

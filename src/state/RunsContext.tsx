@@ -12,6 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { LatLng, ManagementInputs, Run, RunSetup } from '../types';
 import { DEMO_RUNS } from '../data/demoRuns';
 import { datasetForInputs } from '../data/datasets';
+import { MATURITY } from '../data/options';
 
 const STORAGE_KEY = 'salus-online.runs.v2';
 
@@ -26,11 +27,31 @@ interface RunsApi {
 
 const RunsContext = createContext<RunsApi | null>(null);
 
+/**
+ * migrateInputs — brings runs saved by older versions up to today's choices
+ * so their labels still show:
+ * - tillage 'reduced' / 'conventional' (before v0.3.2) → 'minimum' / 'moldboard';
+ * - hybrid maturity: only 100, 110 and 120 days are offered now, so other
+ *   saved values (80–115 in 5-day steps) snap to the nearest one.
+ */
+function migrateInputs(run: Run): Run {
+  if (!run.inputs) return run;
+  const inputs = { ...run.inputs };
+  const tillageMap: Record<string, ManagementInputs['tillage']> = { reduced: 'minimum', conventional: 'moldboard' };
+  const newTillage = tillageMap[inputs.tillage as string];
+  if (newTillage) inputs.tillage = newTillage;
+  const days = MATURITY.map((o) => o.value);
+  if (!days.includes(inputs.maturityDays)) {
+    inputs.maturityDays = days.reduce((best, d) => (Math.abs(d - inputs.maturityDays) < Math.abs(best - inputs.maturityDays) ? d : best));
+  }
+  return { ...run, inputs };
+}
+
 /** Reads saved runs, falling back to the demo runs if storage is empty or blocked. */
 function loadRuns(): Run[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Run[];
+    if (raw) return (JSON.parse(raw) as Run[]).map(migrateInputs);
   } catch {
     /* private mode or corrupted JSON — ignore */
   }
