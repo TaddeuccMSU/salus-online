@@ -47,6 +47,14 @@ interface Props {
   dense?: boolean;
   /** Change (to a new number) to move keyboard focus to the panel's heading (field picked by keyboard). */
   focusKey?: number;
+  /**
+   * Start from an existing run's answers instead of the dataset defaults
+   * ("Run new management" on the results page). The run name is left for the
+   * default so the new run gets its own name.
+   */
+  initial?: { setup: RunSetup; inputs: ManagementInputs };
+  /** Shown in place of the step label and "Click the map…" line (e.g. inside the results-page dialog). */
+  context?: { overline: string; hint: string };
 }
 
 /** Simulation lengths offered in the "How many years" select (plus "All"). */
@@ -64,7 +72,7 @@ function initialSetup(placeName: string): RunSetup {
   };
 }
 
-export default function SetManagementPanel({ location, placeName, onClose, onSubmit, dense = false, focusKey }: Props) {
+export default function SetManagementPanel({ location, placeName, onClose, onSubmit, dense = false, focusKey, initial, context }: Props) {
   const c = useColors(); // light or dark mode colours
   const headingRef = useRef<HTMLHeadingElement>(null);
   // Field picked with the keyboard → focus the heading so the form is next in Tab order
@@ -74,8 +82,8 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
     const t = setTimeout(() => headingRef.current?.focus({ preventScroll: true }), 300);
     return () => clearTimeout(t);
   }, [focusKey]);
-  const [setup, setSetup] = useState<RunSetup>(() => initialSetup(placeName));
-  const [inputs, setInputs] = useState<ManagementInputs>(() => getDataset(setup.datasetId).defaults);
+  const [setup, setSetup] = useState<RunSetup>(() => (initial ? { ...initial.setup, name: initialSetup(placeName).name, description: '' } : initialSetup(placeName)));
+  const [inputs, setInputs] = useState<ManagementInputs>(() => initial?.inputs ?? getDataset(setup.datasetId).defaults);
   const [nameEdited, setNameEdited] = useState(false);
   const [touched, setTouched] = useState(false);
 
@@ -129,10 +137,10 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
       <Box sx={{ px: dense ? 1.5 : 2.5, pt: dense ? 1 : 2, pb: dense ? 0.75 : 1.5, bgcolor: 'background.paper', color: 'text.primary', borderBottom: 1, borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="overline" sx={{ color: 'text.secondary' }}>Step 2 of 3 · Set Management</Typography>
+            <Typography variant="overline" sx={{ color: 'text.secondary' }}>{context?.overline ?? 'Step 2 of 3 · Set Management'}</Typography>
             <Typography ref={headingRef} tabIndex={-1} variant={dense ? 'h6' : 'h5'} component="h2" noWrap sx={{ '&:focus': { outline: 'none' } }}>{placeName || 'Selected field'}</Typography>
             <Typography variant="body2" color="text.secondary">
-              {placeName && placeName !== formatLatLng(location) ? `${formatLatLng(location)} · ` : ''}Click the map to move the pin
+              {placeName && placeName !== formatLatLng(location) ? `${formatLatLng(location)} · ` : ''}{context?.hint ?? 'Click the map to move the pin'}
             </Typography>
           </Box>
           {/* ⚙ Form settings: the same global units switch as the results charts */}

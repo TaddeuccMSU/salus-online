@@ -24,6 +24,8 @@ import { Alert, Box, Button, Chip, Collapse, IconButton, LinearProgress, Paper, 
 import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ResultsSummaryPanel from '../components/results/ResultsSummaryPanel';
+import NewManagementDialog from '../components/results/NewManagementDialog';
+import TuneIcon from '@mui/icons-material/Tune';
 import PageContainer from '../components/layout/PageContainer';
 import SectionCard from '../components/layout/SectionCard';
 import Legend from '../components/layout/Legend';
@@ -151,6 +153,8 @@ export default function ResultsPage() {
   // Cut the run's simulation period out of the results (totals restart and maximums rescale; see sliceResults).
   const data = useMemo(() => (raw && run ? sliceResults(raw, run.setup.startYear, run.setup.endYear) : raw), [raw, run]);
   const ctl = useDateWindow(data?.days);
+  // "Run new management" pop-up (Set Management for this field).
+  const [newMgmtOpen, setNewMgmtOpen] = useState(false);
   // Results summary panel under the banner: open/closed is remembered in this browser.
   const [summaryOpen, setSummaryOpen] = useState<boolean>(() => {
     try { return localStorage.getItem(SUMMARY_KEY) === '1'; } catch { return false; }
@@ -250,6 +254,11 @@ export default function ResultsPage() {
             ))}
           </Box>
         </Box>
+        {/* Set Management for this same field in a pop-up, starting from this run's answers. */}
+        <Button variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={() => setNewMgmtOpen(true)} aria-haspopup="dialog">
+          Run new management
+        </Button>
+        <NewManagementDialog run={run} open={newMgmtOpen} onClose={() => setNewMgmtOpen(false)} />
         {/* Opens / closes the Results summary table under this banner (remembered in this browser). */}
         {ready && data && (
           <Button
