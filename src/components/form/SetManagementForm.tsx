@@ -74,7 +74,6 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
   const { units } = useUnits();
   const shownPopulation = Math.round(inputToDisplay('population', v.plantPopulation, units));
   const shownRate = Math.round(inputToDisplay('rate', v.fertilizerRate, units) * 10) / 10;
-  const typicalPop = units === 'metric' ? 'Typical: 74,000–94,000' : 'Typical: 30,000–38,000';
   const drives = (k: keyof ManagementInputs) => drivers.includes(k);
 
   return (
@@ -120,7 +119,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             <TextField
               fullWidth type="number" label="Plant population" value={shownPopulation}
               onChange={(e) => set('plantPopulation', inputFromDisplay('population', Number(e.target.value), units))}
-              error={!!errors.plantPopulation} helperText={errors.plantPopulation ?? typicalPop}
+              error={!!errors.plantPopulation} helperText={errors.plantPopulation}
               slotProps={{ input: { endAdornment: <InputAdornment position="end">{inputUnit('population', units)}</InputAdornment> }, htmlInput: { step: units === 'metric' ? 1000 : 500, min: 0 } }}
             />
           </Grid>
@@ -152,7 +151,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             </TextField>
           </Grid>
         </Grid>
-        <YesNo label="Winter cover crop" helper="A cereal rye cover crop after harvest." value={v.coverCrop} onChange={(b) => set('coverCrop', b)} />
+        <YesNo label="Do you grow a cover crop over the winter?" value={v.coverCrop} onChange={(b) => set('coverCrop', b)} />
       </FormSection>
 
       <FormSection id="nitrogen" step={firstStep + 2} title="Water & nitrogen" description="Inputs that drive nitrate leaching and N-use efficiency.">
