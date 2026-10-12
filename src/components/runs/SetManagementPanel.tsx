@@ -8,7 +8,7 @@
  *   3 Field & soil  ┐
  *   4 Crop & planting ├ SetManagementForm (pre-filled from the dataset)
  *   5 Water & nitrogen┘
- *   6 Simulation period  year slider limited to the dataset's years
+ *   6 Simulation period  year slider, 1980–2021 (FIRST/LAST_WEATHER_YEAR)
  *   [Cancel]                                     [▶ Run SALUS]
  *
  * Demo-mode rule: picking a dataset loads its management answers, and the
@@ -30,6 +30,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FormSection from '../form/FormSection';
 import DatasetPicker from '../form/DatasetPicker';
 import SetManagementForm, { summarize, validate } from '../form/SetManagementForm';
+import { FIRST_WEATHER_YEAR, LAST_WEATHER_YEAR } from '../../data/options';
 import { RESULT_DRIVING_FIELDS, TEST_DATASETS, datasetForInputs, getDataset } from '../../data/datasets';
 import { formatLatLng } from '../../hooks/useReverseGeocode';
 import type { LatLng, ManagementInputs, RunSetup } from '../../types';
@@ -90,16 +91,11 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
   const invalid = Object.keys(errors).length > 0 || !!nameError;
   const years = setup.endYear - setup.startYear + 1;
 
-  /** Pick a dataset: load its management answers and clamp the years into its range. */
+  /** Pick a dataset: load its management answers. The chosen years are kept (any of 1980–2021). */
   const chooseDataset = (id: string) => {
     const d = getDataset(id);
     setInputs(d.defaults);
-    setSetup((s) => ({
-      ...s,
-      datasetId: id,
-      startYear: Math.max(d.firstYear, Math.min(s.startYear, d.lastYear)),
-      endYear: Math.min(d.lastYear, Math.max(s.endYear, d.firstYear)),
-    }));
+    setSetup((s) => ({ ...s, datasetId: id }));
   };
 
   /** Form edits: keep the dataset matched to answers that drive results (irrigation). */
@@ -168,7 +164,7 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
 
         <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={3} />
 
-        <FormSection id="period" step={6} title="Simulation period" description={`Weather is available for ${dataset.firstYear}–${dataset.lastYear} in this dataset.`}>
+        <FormSection id="period" step={6} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}. Demo results only cover ${dataset.firstYear}–${dataset.lastYear}; years outside that show the whole sample.`}>
           <Box sx={{ px: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography sx={{ fontWeight: 600 }}>{setup.startYear} – {setup.endYear}</Typography>
@@ -176,10 +172,11 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
             </Box>
             <Slider
               value={[setup.startYear, setup.endYear]}
-              min={dataset.firstYear}
-              max={dataset.lastYear}
+              min={FIRST_WEATHER_YEAR}
+              max={LAST_WEATHER_YEAR}
               step={1}
-              marks={Array.from({ length: dataset.lastYear - dataset.firstYear + 1 }, (_, i) => ({ value: dataset.firstYear + i, label: String(dataset.firstYear + i) }))}
+              // Labels every 10 years plus the last year (2020 is skipped so it doesn't collide with 2021).
+              marks={[1980, 1990, 2000, 2010, LAST_WEATHER_YEAR].map((y) => ({ value: y, label: String(y) }))}
               disableSwap
               onChange={(_, v) => {
                 const [a, b] = v as number[];

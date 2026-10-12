@@ -55,9 +55,9 @@ export const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ].map((m, i) => ({ value: i + 1, label: m }));
 
-/** Weather history available to the model. */
-export const FIRST_WEATHER_YEAR = 1990;
-export const LAST_WEATHER_YEAR = 2025;
+/** Years the Simulation period slider offers (weather history available to the model). */
+export const FIRST_WEATHER_YEAR = 1980;
+export const LAST_WEATHER_YEAR = 2021;
 
 /** Sensible defaults matching the live site's pre-filled form. */
 export const DEFAULT_INPUTS: ManagementInputs = {
