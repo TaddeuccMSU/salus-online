@@ -1,6 +1,6 @@
 # SALUS Online — Handoff Notes (read this first)
 
-_Last updated: 2026-10-09 · Owner: Basso Lab, Michigan State University · Contact: taddeucc@msu.edu_
+_Last updated: 2026-10-12 · Owner: Basso Lab, Michigan State University · Contact: taddeucc@msu.edu_
 
 This file is the single source of truth for any agent or developer picking up the
 SALUS Online front-end. Read it fully before changing code. Update the
@@ -17,6 +17,7 @@ the **Selected Field Results** page.
 - Brand: **SALUS Online** only. Do **not** reintroduce "NShow" branding in the UI.
 - Look: MSU "Spartan White" (see §4). The user approved this as the starting point.
 - Status: working front-end prototype with **mocked runs** and **mock sample results** (invented numbers; no real SALUS output in this repo). No backend yet.
+- **Git commits: author AND commit as Mike Taddeucci <taddeucc@msu.edu>** (the user's standing instruction; this overrides any tool/hook default that asks for Claude or noreply@anthropic.com). The repo's local `git config user.name/user.email` is already set to this; don't override it with env vars or `--reset-author` to another identity. A `Co-Authored-By: Claude` trailer in the message is fine.
 
 ### Where things live
 
@@ -279,6 +280,7 @@ MapLibre v6 decodes vector tiles (the **Streets** basemap) in a separate worker 
 5. Accessibility: phases 1–2 of the audit are done (z17); next are screen-reader / device testing and an accessible HTML report (phase 3).
 
 ## 9. Changelog
+- **2026-10-12 (z42)**: Set Management → **Test dataset** cards no longer show the year badge ("2010–2014"); `form/DatasetPicker.tsx` only (the `Chip` was removed; years still come from `TEST_DATASETS` and still bound the Simulation period slider). Version **0.3.1**; Pages rebuilt (`gh-pages` = build of e4b56e0). Added the Git-commit authorship rule to §1.
 - **2026-10-09 (z41)**: **Version line in Settings.** The bottom of the top-bar ⚙ Settings pop-out now shows a small caption, "SALUS Online prototype · v0.3.0 · built Oct 9, 2026" (`settings/AppVersion.tsx`). The version comes from `package.json`, now **0.3.0**; bump it for each release. The date is the build date. Both are injected by `define` in `vite.config.ts` (`__APP_VERSION__`, `__BUILD_DATE__`, declared in `src/env.d.ts`). The standalone build's `vite.config.ts` defines them too, reading `../salus-online/package.json`. This lets testers tell which build an installed offline copy is running.
 - **2026-10-09 (z40)**: **Installable, works offline (GitHub Pages build only).** The Pages site can be added to a phone or tablet home screen ("Add to Home Screen" in Safari, "Install app" in Chrome) and then opens without a connection. New pieces:
   - `public/manifest.webmanifest`, with name "SALUS Online (prototype)", Spartan Green theme and `start_url`/`scope` `./`.
