@@ -26,8 +26,8 @@ export function soilDepthLabel(value: string, units: 'metric' | 'us'): string {
 
 export const TILLAGE = [
   { value: 'none', label: 'No tillage' },
-  { value: 'reduced', label: 'Reduced tillage' },
-  { value: 'conventional', label: 'Conventional tillage' },
+  { value: 'minimum', label: 'Minimum tillage' },
+  { value: 'moldboard', label: 'Moldboard plow' },
 ] as const;
 
 export const MATURITY = [80, 85, 90, 95, 100, 105, 110, 115, 120].map((d) => ({

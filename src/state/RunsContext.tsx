@@ -27,10 +27,21 @@ interface RunsApi {
 const RunsContext = createContext<RunsApi | null>(null);
 
 /** Reads saved runs, falling back to the demo runs if storage is empty or blocked. */
+/**
+ * migrateTillage — runs saved before v0.3.2 used the old tillage choices
+ * 'reduced' and 'conventional'. Map them to their replacements
+ * ('minimum' and 'moldboard') so old runs still show a tillage label.
+ */
+function migrateTillage(run: Run): Run {
+  const old = run.inputs?.tillage as string | undefined;
+  const map: Record<string, ManagementInputs['tillage']> = { reduced: 'minimum', conventional: 'moldboard' };
+  return old && map[old] ? { ...run, inputs: { ...run.inputs, tillage: map[old] } } : run;
+}
+
 function loadRuns(): Run[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Run[];
+    if (raw) return (JSON.parse(raw) as Run[]).map(migrateTillage);
   } catch {
     /* private mode or corrupted JSON — ignore */
   }

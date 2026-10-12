@@ -16,7 +16,7 @@ export interface ManagementInputs {
   soilTexture: string;
   soilDepth: 'shallow' | 'moderate' | 'deep';
   cornUse: 'grain' | 'silage';
-  tillage: 'none' | 'reduced' | 'conventional';
+  tillage: 'none' | 'minimum' | 'moldboard';
   plantPopulation: number; // seeds / acre
   maturityDays: number; // hybrid relative maturity, days
   plantingMonth: number; // 1-12
