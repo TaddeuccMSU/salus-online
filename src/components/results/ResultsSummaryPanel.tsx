@@ -163,12 +163,13 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
       <Box data-tour="results-summary" sx={{ bgcolor: 'background.paper', color: 'text.primary', borderTop: 1, borderColor: 'divider' }}>
         <Box ref={widthRef} sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, py: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* 1 · Parameters, with changes since the previous run at this field highlighted */}
-          <Box>
+          <Box data-tour="results-parameters">
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="overline" color="text.secondary" component="h2" sx={{ flex: 1 }}>Based on these parameters</Typography>
               {/* Shows / hides only the results table below (same as the banner's "Results summary" button). */}
               <Button
                 size="small" startIcon={tableOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                data-tour="results-table-toggle"
                 onClick={onToggleTable} aria-expanded={tableOpen} aria-controls="results-summary-table"
               >
                 {tableOpen ? 'Hide results table' : 'Show results table'}
@@ -204,7 +205,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                   ? <>Highlighted: {changed.length} parameter{changed.length > 1 ? 's' : ''} changed since “{prev.name}”, the previous run at this field (hover for the old value).</>
                   : <>Same parameters as “{prev.name}”, the previous run at this field.</>)}
               </Typography>
-              <Button variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={onNewManagement} aria-haspopup="dialog" sx={{ ml: 'auto' }}>
+              <Button data-tour="run-new-management" variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={onNewManagement} aria-haspopup="dialog" sx={{ ml: 'auto' }}>
                 Run new management
               </Button>
             </Box>
