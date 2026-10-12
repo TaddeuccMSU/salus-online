@@ -17,6 +17,7 @@ the **Selected Field Results** page.
 - Brand: **SALUS Online** only. Do **not** reintroduce "NShow" branding in the UI.
 - Look: MSU "Spartan White" (see §4). The user approved this as the starting point.
 - Status: working front-end prototype with **mocked runs** and **mock sample results** (invented numbers; no real SALUS output in this repo). No backend yet.
+- **Version: bump `version` in `package.json` for every push that deploys the demo site** (pushes to `main`), and tell the user the version being deployed. It shows in the top-bar ⚙ Settings as "SALUS Online prototype · vX.Y.Z" (no build date).
 - **Git commits: author AND commit as Mike Taddeucci <taddeucc@msu.edu>** (the user's standing instruction; this overrides any tool/hook default that asks for Claude or noreply@anthropic.com). The repo's local `git config user.name/user.email` is already set to this; don't override it with env vars or `--reset-author` to another identity. A `Co-Authored-By: Claude` trailer in the message is fine.
 
 ### Where things live
@@ -280,6 +281,7 @@ MapLibre v6 decodes vector tiles (the **Streets** basemap) in a separate worker 
 5. Accessibility: phases 1–2 of the audit are done (z17); next are screen-reader / device testing and an accessible HTML report (phase 3).
 
 ## 9. Changelog
+- **2026-10-12 (z74)**: Settings version line no longer shows the build date ("built …"); just "SALUS Online prototype · v0.4.0". `__BUILD_DATE__` removed from `vite.config.ts` / `src/env.d.ts` (the standalone build's own config may still define it; harmless). Version **0.4.0** (results summary table/cards, Run new management, demo notice, fertilizer products, 1980–2021 data, tour updates). New rule in §1: bump the version for every deploying push.
 - **2026-10-12 (z73)**: The **results table is shown by default** on results pages; it stays hidden only if the user hid it in this browser (`salus-online.resultsSummaryOpen.v1` = `0`).
 - **2026-10-12 (z72, branch `results-summary-table`, not deployed)**: **Explain results tour redone** (11 steps): Your run at a glance (text updated: no more settings chips) → **Based on these parameters** (`results-parameters`; explains the lime "changed since the previous run" highlights) → **Results table** (`results-table-toggle`; try Show results table, CSV in the toolbar; phone text describes the cards + Show filter) → Move through time → the four charts → Layout, colours and units → Want a copy? → **Try different management** (`run-new-management`, new final step). New targets added to `TOUR_TARGETS` and as `data-tour` attributes in `ResultsSummaryPanel.tsx`. Checked step by step on desktop and phone: every step finds its target, no errors.
 - **2026-10-12 (z71, branch `results-summary-table`, not deployed)**: Results page header trimmed: the **summary chips** under the run name (place, soil, rainfed/irrigated, N rate, years) and the banner's **Results summary** button were removed (the parameters list below covers both; the table is opened with its own Show / Hide results table button). Results summary Cards: cards **without** the chosen statistic ("Not available") now come **last**; the rest keep the table order.

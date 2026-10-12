@@ -4,4 +4,3 @@
  * undefined, so read them with `typeof` (see settings/AppVersion.tsx).
  */
 declare const __APP_VERSION__: string;
-declare const __BUILD_DATE__: string;

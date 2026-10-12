@@ -10,7 +10,6 @@ export default defineConfig({
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
-    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
   // MapLibre's worker (see src/components/map/maplibreWorker.ts) is built as an
   // ES-module worker, matching how MapLibre starts it.
