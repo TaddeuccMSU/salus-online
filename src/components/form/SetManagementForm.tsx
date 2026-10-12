@@ -16,7 +16,7 @@
 import { Box, Collapse, InputAdornment, MenuItem, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import type { ManagementInputs } from '../../types';
-import { MATURITY, MONTHS, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
+import { CROPS, MATURITY, MONTHS, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
 import { useUnits } from '../../state/UnitsContext';
 import { fmtNum, inputFromDisplay, inputToDisplay, inputUnit, type UnitSystem } from '../../theme/units';
 import FormSection from './FormSection';
@@ -101,6 +101,13 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
       </FormSection>
 
       <FormSection id="crop" step={firstStep + 1} title="Crop & planting" description="Corn hybrid, stand and planting date.">
+        <Box>
+          {/* Crop: corn is the only option for now (hard-coded; not stored with the run). */}
+          <Typography id="crop-label" sx={{ fontWeight: 600, mb: 1 }}>Crop</Typography>
+          <ToggleButtonGroup exclusive value="corn" aria-labelledby="crop-label">
+            {CROPS.map((o) => <ToggleButton key={o.value} value={o.value} sx={{ minWidth: 96 }}>{o.label}</ToggleButton>)}
+          </ToggleButtonGroup>
+        </Box>
         <Box>
           <Typography sx={{ fontWeight: 600, mb: 1 }}>Corn grown for</Typography>
           <ToggleButtonGroup exclusive value={v.cornUse} onChange={(_, t) => t && set('cornUse', t)}>

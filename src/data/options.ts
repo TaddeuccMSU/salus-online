@@ -24,6 +24,13 @@ export function soilDepthLabel(value: string, units: 'metric' | 'us'): string {
   return d ? (units === 'metric' ? d.metricLabel : d.label) : '';
 }
 
+/**
+ * Crops the form offers. Only corn for now, and it's hard-coded: the answer
+ * isn't saved with the run (SALUS Online runs are all corn). Add crops here
+ * and a `crop` field to ManagementInputs when more become available.
+ */
+export const CROPS = [{ value: 'corn', label: 'Corn' }] as const;
+
 export const TILLAGE = [
   { value: 'none', label: 'No tillage' },
   { value: 'minimum', label: 'Minimum tillage' },
