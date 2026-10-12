@@ -15,7 +15,8 @@
  * green results banner, like the other dialogs and pop-overs there.
  */
 import { useMemo } from 'react';
-import { alpha, Box, ThemeProvider, Tooltip, Typography } from '@mui/material';
+import { alpha, Box, Button, ThemeProvider, Tooltip, Typography } from '@mui/material';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import type { Run, RunResults } from '../../types';
 import { useAppTheme } from '../../theme/chrome';
@@ -31,6 +32,8 @@ interface Props {
   runs: Run[];
   /** Results already cut to the run's years. */
   data: RunResults;
+  /** Collapses the panel (the "Collapse" button at its top right). */
+  onCollapse: () => void;
 }
 
 const yn = (b: boolean) => (b ? 'Yes' : 'No');
@@ -80,7 +83,7 @@ const GREEN = tokens.color.spartanGreen;
 
 const fmt = (v: number | null) => (v === null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export default function ResultsSummaryPanel({ run, runs, data }: Props) {
+export default function ResultsSummaryPanel({ run, runs, data, onCollapse }: Props) {
   const theme = useAppTheme();
   const c = useColors();
   const { units } = useUnits();
@@ -108,7 +111,13 @@ export default function ResultsSummaryPanel({ run, runs, data }: Props) {
         <Box sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, py: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* 1 · Parameters, with changes since the previous run at this field highlighted */}
           <Box>
-            <Typography variant="overline" color="text.secondary" component="h2">Based on these parameters</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="overline" color="text.secondary" component="h2" sx={{ flex: 1 }}>Based on these parameters</Typography>
+              {/* Same as the banner's "Results summary" button: closes this panel. */}
+              <Button size="small" startIcon={<ExpandLessIcon />} onClick={onCollapse} aria-controls="results-summary-panel" aria-label="Collapse results summary">
+                Collapse
+              </Button>
+            </Box>
             <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
               {params.map((p) => {
                 const was = prevParams?.get(p.key);

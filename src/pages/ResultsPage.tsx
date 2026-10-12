@@ -264,6 +264,7 @@ export default function ResultsPage() {
           <Button
             variant="outlined" startIcon={<TableChartOutlinedIcon />}
             endIcon={<ExpandMoreIcon sx={{ transform: summaryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />}
+            id="results-summary-toggle"
             aria-expanded={summaryOpen} aria-controls="results-summary-panel"
             onClick={() => toggleSummary()}
           >
@@ -283,7 +284,11 @@ export default function ResultsPage() {
       )}
       {ready && data && (
         <Collapse in={summaryOpen} unmountOnExit id="results-summary-panel">
-          <ResultsSummaryPanel run={run} runs={runs} data={data} />
+          <ResultsSummaryPanel
+            run={run} runs={runs} data={data}
+            // Collapse from inside the panel, then put keyboard focus back on the banner's toggle.
+            onCollapse={() => { toggleSummary(); requestAnimationFrame(() => document.getElementById('results-summary-toggle')?.focus()); }}
+          />
         </Collapse>
       )}
     </Box>
