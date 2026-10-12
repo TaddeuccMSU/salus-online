@@ -20,7 +20,10 @@ import { useColors, useVisibleEventColors, type EventColors } from '../theme/col
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Alert, Box, Button, Chip, IconButton, LinearProgress, Paper, Skeleton, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Collapse, IconButton, LinearProgress, Paper, Skeleton, Tooltip, Typography } from '@mui/material';
+import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ResultsSummaryPanel from '../components/results/ResultsSummaryPanel';
 import PageContainer from '../components/layout/PageContainer';
 import SectionCard from '../components/layout/SectionCard';
 import Legend from '../components/layout/Legend';
@@ -133,6 +136,9 @@ function CardCorner({ children }: { children: ReactNode }) {
   return <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>{children}</Box>;
 }
 
+/** localStorage key: is the Results summary panel open? */
+const SUMMARY_KEY = 'salus-online.resultsSummaryOpen.v1';
+
 export default function ResultsPage() {
   const { runId = '' } = useParams();
   const navigate = useNavigate();
@@ -145,6 +151,14 @@ export default function ResultsPage() {
   // Cut the run's simulation period out of the results (totals restart and maximums rescale; see sliceResults).
   const data = useMemo(() => (raw && run ? sliceResults(raw, run.setup.startYear, run.setup.endYear) : raw), [raw, run]);
   const ctl = useDateWindow(data?.days);
+  // Results summary panel under the banner: open/closed is remembered in this browser.
+  const [summaryOpen, setSummaryOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem(SUMMARY_KEY) === '1'; } catch { return false; }
+  });
+  const toggleSummary = () => setSummaryOpen((o) => {
+    try { localStorage.setItem(SUMMARY_KEY, o ? '0' : '1'); } catch { /* storage blocked: fine */ }
+    return !o;
+  });
   const { day, window: w } = ctl;
   // Product tour: "Do it for me" on the date step moves ~a month ahead; clicks on the events strip count as moving the date.
   const { emit, startTour } = useTour();
@@ -236,6 +250,17 @@ export default function ResultsPage() {
             ))}
           </Box>
         </Box>
+        {/* Opens / closes the Results summary table under this banner (remembered in this browser). */}
+        {ready && data && (
+          <Button
+            variant="outlined" startIcon={<TableChartOutlinedIcon />}
+            endIcon={<ExpandMoreIcon sx={{ transform: summaryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />}
+            aria-expanded={summaryOpen} aria-controls="results-summary-panel"
+            onClick={() => toggleSummary()}
+          >
+            Results summary
+          </Button>
+        )}
         {/* Starts the "Explain results" tour (content in src/tour/HowToTourConfig.ts). */}
         <Button data-tour="explain-results" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => startTour('explainResults')}>
           Explain results
@@ -246,6 +271,11 @@ export default function ResultsPage() {
         <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, pb: 2, mt: -1 }}>
           {run.setup.description}
         </Typography>
+      )}
+      {ready && data && (
+        <Collapse in={summaryOpen} unmountOnExit id="results-summary-panel">
+          <ResultsSummaryPanel run={run} runs={runs} data={data} />
+        </Collapse>
       )}
     </Box>
     </ChromeSurface>
