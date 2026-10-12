@@ -59,6 +59,10 @@ export const MONTHS = [
 export const FIRST_WEATHER_YEAR = 1980;
 export const LAST_WEATHER_YEAR = 2021;
 
+/** Years a new run (and the demo runs) start with. */
+export const DEFAULT_START_YEAR = 2010;
+export const DEFAULT_END_YEAR = 2014;
+
 /** Sensible defaults matching the live site's pre-filled form. */
 export const DEFAULT_INPUTS: ManagementInputs = {
   soilTexture: 'Silty Clay',

@@ -33,6 +33,7 @@ import FieldMiniMap from '../components/results/FieldMiniMap';
 import { ChromeSurface, softPrimary } from '../theme/chrome';
 import { useRuns } from '../state/RunsContext';
 import { useRunResults } from '../hooks/useRunResults';
+import { sliceResults } from '../data/sliceResults';
 import { useDateWindow } from '../hooks/useDateWindow';
 import { nitrateRamp } from '../theme/chartColors';
 import { useChartColors } from '../state/ChartColorsContext';
@@ -140,15 +141,8 @@ export default function ResultsPage() {
   const fromWizard = !!(useLocation().state as { fromWizard?: boolean } | null)?.fromWizard;
   const { data: raw, error } = useRunResults(ready ? run?.resultsFile : undefined);
 
-  // Trim the dataset to the run's simulation period (falls back to everything).
-  const data = useMemo(() => {
-    if (!raw || !run) return raw;
-    const from = `${run.setup.startYear}-01-01`;
-    const to = `${run.setup.endYear}-12-31`;
-    const inRange = (d: string) => d >= from && d <= to;
-    const days = raw.days.filter((d) => inRange(d.date));
-    return days.length ? { ...raw, days, events: raw.events.filter((e) => inRange(e.date)) } : raw;
-  }, [raw, run]);
+  // Cut the run's simulation period out of the results (totals restart and maximums rescale; see sliceResults).
+  const data = useMemo(() => (raw && run ? sliceResults(raw, run.setup.startYear, run.setup.endYear) : raw), [raw, run]);
   const ctl = useDateWindow(data?.days);
   const { day, window: w } = ctl;
   // Product tour: "Do it for me" on the date step moves ~a month ahead; clicks on the events strip count as moving the date.

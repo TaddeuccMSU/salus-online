@@ -30,7 +30,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FormSection from '../form/FormSection';
 import DatasetPicker from '../form/DatasetPicker';
 import SetManagementForm, { summarize, validate } from '../form/SetManagementForm';
-import { FIRST_WEATHER_YEAR, LAST_WEATHER_YEAR } from '../../data/options';
+import { DEFAULT_END_YEAR, DEFAULT_START_YEAR, FIRST_WEATHER_YEAR, LAST_WEATHER_YEAR } from '../../data/options';
 import { RESULT_DRIVING_FIELDS, TEST_DATASETS, datasetForInputs, getDataset } from '../../data/datasets';
 import { formatLatLng } from '../../hooks/useReverseGeocode';
 import type { LatLng, ManagementInputs, RunSetup } from '../../types';
@@ -61,8 +61,8 @@ function initialSetup(placeName: string): RunSetup {
     name: `${placeName || 'My field'} — ${dayjs().format('MMM D, YYYY')}`,
     description: '',
     datasetId: d.id,
-    startYear: d.firstYear,
-    endYear: d.lastYear,
+    startYear: DEFAULT_START_YEAR,
+    endYear: DEFAULT_END_YEAR,
   };
 }
 
@@ -186,7 +186,7 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
 
         <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={3} />
 
-        <FormSection id="period" step={6} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}. Demo results only cover ${dataset.firstYear}–${dataset.lastYear}; years outside that show the whole sample.`}>
+        <FormSection id="period" step={6} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}.`}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             <Typography id="sim-years-label" sx={{ fontWeight: 600, flex: 1, minWidth: 200 }}>How many years would you like to run SALUS?</Typography>
             <Select size="small" labelId="sim-years-label" value={durationValue} onChange={(e) => chooseDuration(e.target.value)} sx={{ minWidth: 112 }}>

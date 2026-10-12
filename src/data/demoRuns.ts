@@ -2,10 +2,11 @@
  * demoRuns.ts — seed runs so the app has something to show on first load.
  *
  * One run per test dataset (mock sample results placed at East Lansing MI,
- * 2010–2014; see scripts/make_sample_data.py). Replace with API data later.
+ * 2010–2014 cut from the 1980–2021 files; see scripts/make_sample_data.py). Replace with API data later.
  */
 import type { Run } from '../types';
 import { TEST_DATASETS } from './datasets';
+import { DEFAULT_END_YEAR, DEFAULT_START_YEAR } from './options';
 
 export const DEMO_RUNS: Run[] = TEST_DATASETS.map((d, i) => ({
   id: `demo-${d.id.replace('east-lansing-', '')}`,
@@ -16,6 +17,6 @@ export const DEMO_RUNS: Run[] = TEST_DATASETS.map((d, i) => ({
   createdAt: `2026-03-28T14:0${i * 5}:00.000Z`,
   status: 'complete',
   resultsFile: d.resultsFile,
-  setup: { name: `Test ET Run — ${d.label}`, description: d.description, datasetId: d.id, startYear: d.firstYear, endYear: d.lastYear },
+  setup: { name: `Test ET Run — ${d.label}`, description: d.description, datasetId: d.id, startYear: DEFAULT_START_YEAR, endYear: DEFAULT_END_YEAR },
   inputs: d.defaults,
 }));
