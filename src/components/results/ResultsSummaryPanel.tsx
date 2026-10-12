@@ -236,7 +236,8 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
             )}
             {view === 'cards' ? (
               <Box component="ul" aria-label={`Results summary over ${nYears} years: ${statLabel.toLowerCase()}`} sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
-                {rows.map((r) => {
+                {/* Measures with the chosen statistic first (in table order), then the "Not available" ones (also in table order). */}
+                {[...rows.filter((r) => r[stat] !== null), ...rows.filter((r) => r[stat] === null)].map((r) => {
                   const v = r[stat];
                   return (
                     <Box component="li" key={r.id} sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: tokens.color.spartanGreen, bgcolor: alpha(GREEN, dark ? 0.25 : 0.05), display: 'flex', flexDirection: 'column' }}>
