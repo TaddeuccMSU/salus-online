@@ -20,9 +20,7 @@ import { useColors, useVisibleEventColors, type EventColors } from '../theme/col
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Alert, Box, Button, Chip, IconButton, LinearProgress, Paper, Skeleton, Tooltip, Typography } from '@mui/material';
-import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Alert, Box, Button, IconButton, LinearProgress, Paper, Skeleton, Tooltip, Typography } from '@mui/material';
 import ResultsSummaryPanel from '../components/results/ResultsSummaryPanel';
 import NewManagementDialog from '../components/results/NewManagementDialog';
 import PageContainer from '../components/layout/PageContainer';
@@ -34,10 +32,9 @@ import StackedGaugeChart from '../components/charts/StackedGaugeChart';
 import EventsTimeline from '../components/charts/EventsTimeline';
 import WizardStepper from '../components/layout/WizardStepper';
 import FieldMiniMap from '../components/results/FieldMiniMap';
-import { ChromeSurface, softPrimary } from '../theme/chrome';
+import { ChromeSurface } from '../theme/chrome';
 import { useRuns } from '../state/RunsContext';
 import { useRunResults } from '../hooks/useRunResults';
-import { nitrogenRate } from '../data/options';
 import { sliceResults } from '../data/sliceResults';
 import { useDateWindow } from '../hooks/useDateWindow';
 import { nitrateRamp } from '../theme/chartColors';
@@ -55,7 +52,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import type { ChartId } from '../theme/chartColors';
 import { useUnits } from '../state/UnitsContext';
-import { factorOf, fmtNum, layerLabel, nRateText, unitOf } from '../theme/units';
+import { factorOf, fmtNum, layerLabel, unitOf } from '../theme/units';
 import { useTour, useTourAction } from '../tour/TourProvider';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
 
@@ -245,26 +242,7 @@ export default function ResultsPage() {
         <Box sx={{ flex: 1, minWidth: 220 }}>
           <Typography variant="overline" color="text.secondary">Selected field results</Typography>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 800 }}>{run.name}</Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
-            {[run.placeName, run.inputs.soilTexture, run.inputs.irrigate ? 'Irrigated' : 'Rainfed',
-              run.inputs.inorganicFertilizer ? nRateText(nitrogenRate(run.inputs), units) : 'No inorganic N',
-              `${run.setup.startYear}–${run.setup.endYear}`].map((t) => (
-              <Chip key={t} size="small" label={t} sx={{ bgcolor: softPrimary(0.12), color: 'primary.main', fontWeight: 600 }} />
-            ))}
-          </Box>
         </Box>
-        {/* Opens / closes the results table under this banner (remembered in this browser). */}
-        {ready && data && (
-          <Button
-            variant="outlined" startIcon={<TableChartOutlinedIcon />}
-            endIcon={<ExpandMoreIcon sx={{ transform: summaryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />}
-            id="results-summary-toggle"
-            aria-expanded={summaryOpen} aria-controls="results-summary-table"
-            onClick={() => toggleSummary()}
-          >
-            Results summary
-          </Button>
-        )}
         {/* Starts the "Explain results" tour (content in src/tour/HowToTourConfig.ts). */}
         <Button data-tour="explain-results" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => startTour('explainResults')}>
           Explain results
