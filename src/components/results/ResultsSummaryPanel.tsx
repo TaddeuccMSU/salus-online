@@ -1,8 +1,9 @@
 /**
- * ResultsSummaryPanel.tsx — the collapsible "Results summary" under the
+ * ResultsSummaryPanel.tsx — the "Results summary" under the
  * Selected Field Results banner.
  *
- * Two parts, like the results page of the live SALUS Online site:
+ * Two parts, like the results page of the live SALUS Online site. The
+ * parameters always show; only the table collapses (`tableOpen`).
  * 1. "Based on": the run's parameters. If an earlier run exists for the same
  *    field (within ~250 m), parameters that changed since it are highlighted
  *    in lime with the old value in a tooltip, so you can see what a re-run
@@ -15,8 +16,9 @@
  * green results banner, like the other dialogs and pop-overs there.
  */
 import { useMemo } from 'react';
-import { alpha, Box, Button, ThemeProvider, Tooltip, Typography } from '@mui/material';
+import { alpha, Box, Button, Collapse, ThemeProvider, Tooltip, Typography } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import type { Run, RunResults } from '../../types';
 import { useAppTheme } from '../../theme/chrome';
@@ -32,8 +34,10 @@ interface Props {
   runs: Run[];
   /** Results already cut to the run's years. */
   data: RunResults;
-  /** Collapses the panel (the "Collapse" button at its top right). */
-  onCollapse: () => void;
+  /** Is the results table shown? (The parameters are always shown.) */
+  tableOpen: boolean;
+  /** Shows / hides the results table (button at the panel's top right; the banner's button does the same). */
+  onToggleTable: () => void;
 }
 
 const yn = (b: boolean) => (b ? 'Yes' : 'No');
@@ -83,7 +87,7 @@ const GREEN = tokens.color.spartanGreen;
 
 const fmt = (v: number | null) => (v === null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export default function ResultsSummaryPanel({ run, runs, data, onCollapse }: Props) {
+export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onToggleTable }: Props) {
   const theme = useAppTheme();
   const c = useColors();
   const { units } = useUnits();
@@ -113,9 +117,12 @@ export default function ResultsSummaryPanel({ run, runs, data, onCollapse }: Pro
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="overline" color="text.secondary" component="h2" sx={{ flex: 1 }}>Based on these parameters</Typography>
-              {/* Same as the banner's "Results summary" button: closes this panel. */}
-              <Button size="small" startIcon={<ExpandLessIcon />} onClick={onCollapse} aria-controls="results-summary-panel" aria-label="Collapse results summary">
-                Collapse
+              {/* Shows / hides only the results table below (same as the banner's "Results summary" button). */}
+              <Button
+                size="small" startIcon={tableOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                onClick={onToggleTable} aria-expanded={tableOpen} aria-controls="results-summary-table"
+              >
+                {tableOpen ? 'Hide results table' : 'Show results table'}
               </Button>
             </Box>
             <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
@@ -150,7 +157,8 @@ export default function ResultsSummaryPanel({ run, runs, data, onCollapse }: Pro
             )}
           </Box>
 
-          {/* 2 · Best / Average / Median / Worst / Total */}
+          {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}
+          <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
             <DataGrid
               rows={rows}
@@ -179,6 +187,7 @@ export default function ResultsSummaryPanel({ run, runs, data, onCollapse }: Pro
               Best and worst follow what is better for each measure (e.g. lowest leaching, highest yield).
             </Typography>
           </Box>
+          </Collapse>
         </Box>
       </Box>
     </ThemeProvider>

@@ -20,7 +20,7 @@ import { useColors, useVisibleEventColors, type EventColors } from '../theme/col
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Alert, Box, Button, Chip, Collapse, IconButton, LinearProgress, Paper, Skeleton, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, IconButton, LinearProgress, Paper, Skeleton, Tooltip, Typography } from '@mui/material';
 import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ResultsSummaryPanel from '../components/results/ResultsSummaryPanel';
@@ -259,13 +259,13 @@ export default function ResultsPage() {
           Run new management
         </Button>
         <NewManagementDialog run={run} open={newMgmtOpen} onClose={() => setNewMgmtOpen(false)} />
-        {/* Opens / closes the Results summary table under this banner (remembered in this browser). */}
+        {/* Opens / closes the results table under this banner (remembered in this browser). */}
         {ready && data && (
           <Button
             variant="outlined" startIcon={<TableChartOutlinedIcon />}
             endIcon={<ExpandMoreIcon sx={{ transform: summaryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />}
             id="results-summary-toggle"
-            aria-expanded={summaryOpen} aria-controls="results-summary-panel"
+            aria-expanded={summaryOpen} aria-controls="results-summary-table"
             onClick={() => toggleSummary()}
           >
             Results summary
@@ -282,14 +282,9 @@ export default function ResultsPage() {
           {run.setup.description}
         </Typography>
       )}
+      {/* Parameters always show; the results table under them opens / closes (remembered in this browser). */}
       {ready && data && (
-        <Collapse in={summaryOpen} unmountOnExit id="results-summary-panel">
-          <ResultsSummaryPanel
-            run={run} runs={runs} data={data}
-            // Collapse from inside the panel, then put keyboard focus back on the banner's toggle.
-            onCollapse={() => { toggleSummary(); requestAnimationFrame(() => document.getElementById('results-summary-toggle')?.focus()); }}
-          />
-        </Collapse>
+        <ResultsSummaryPanel run={run} runs={runs} data={data} tableOpen={summaryOpen} onToggleTable={toggleSummary} />
       )}
     </Box>
     </ChromeSurface>
