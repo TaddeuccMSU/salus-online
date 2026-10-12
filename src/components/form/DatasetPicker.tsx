@@ -6,7 +6,7 @@
  * Enter/Space work.
  */
 import { useColors } from '../../theme/colors';
-import { Box, ButtonBase, Chip, Typography } from '@mui/material';
+import { Box, ButtonBase, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import type { TestDataset } from '../../types';
@@ -42,7 +42,6 @@ export default function DatasetPicker({ datasets, value, onChange, columns = 2 }
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               {on ? <CheckCircleIcon sx={{ color: 'primary.main' }} /> : <RadioButtonUncheckedIcon sx={{ color: 'text.secondary' }} />}
               <Typography sx={{ fontWeight: 700, flex: 1 }}>{d.label}</Typography>
-              <Chip size="small" label={`${d.firstYear}–${d.lastYear}`} sx={{ fontWeight: 600 }} />
             </Box>
             <Typography variant="body2" color="text.secondary">{d.description}</Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>{d.site}</Typography>
