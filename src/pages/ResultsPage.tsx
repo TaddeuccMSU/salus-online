@@ -254,11 +254,6 @@ export default function ResultsPage() {
             ))}
           </Box>
         </Box>
-        {/* Set Management for this same field in a pop-up, starting from this run's answers. */}
-        <Button variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={() => setNewMgmtOpen(true)} aria-haspopup="dialog">
-          Run new management
-        </Button>
-        <NewManagementDialog run={run} open={newMgmtOpen} onClose={() => setNewMgmtOpen(false)} />
         {/* Opens / closes the results table under this banner (remembered in this browser). */}
         {ready && data && (
           <Button
@@ -277,11 +272,17 @@ export default function ResultsPage() {
         </Button>
         <RunSwitcher run={run} runs={runs} />
       </Box>
-      {run.setup.description && (
-        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, pb: 2, mt: -1 }}>
+      {/* Bottom row of the banner: the run's notes (if any) on the left, "Run new management" at the bottom right. */}
+      <Box sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, pb: 2, mt: -1, display: 'flex', alignItems: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 200 }}>
           {run.setup.description}
         </Typography>
-      )}
+        {/* Set Management for this same field in a pop-up, starting from this run's answers. */}
+        <Button variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={() => setNewMgmtOpen(true)} aria-haspopup="dialog" sx={{ ml: 'auto' }}>
+          Run new management
+        </Button>
+        <NewManagementDialog run={run} open={newMgmtOpen} onClose={() => setNewMgmtOpen(false)} />
+      </Box>
       {/* Parameters always show; the results table under them opens / closes (remembered in this browser). */}
       {ready && data && (
         <ResultsSummaryPanel run={run} runs={runs} data={data} tableOpen={summaryOpen} onToggleTable={toggleSummary} />
