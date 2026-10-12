@@ -3,15 +3,20 @@
  *
  * The number badge + title echo the "Key design decisions" cards from the
  * Spartan White concept (green left rule). `id` lets the side nav scroll here.
+ * Without a `step` it is an unnumbered notice card (e.g. the demo-mode Test
+ * dataset card above step 1): an ⓘ icon instead of the number and a blue
+ * left rule.
  */
 import { useColors } from '../../theme/colors';
 import type { FocusEvent } from 'react';
 import type { ReactNode } from 'react';
 import { Box, Paper, Stack, Typography } from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 interface Props {
   id: string;
-  step: number;
+  /** Step number in the badge; leave out for an unnumbered notice card. */
+  step?: number;
   title: string;
   description?: string;
   children: ReactNode;
@@ -46,11 +51,15 @@ export default function FormSection({ id, step, title, description, children }: 
       role="group"
       aria-labelledby={`${id}-title`}
       onFocus={revealOnKeyboardFocus}
-      sx={{ p: { xs: 2, md: 2.5 }, scrollMarginTop: 16, borderLeft: `4px solid ${c.stripe}` }}>
+      sx={{ p: { xs: 2, md: 2.5 }, scrollMarginTop: 16, borderLeft: '4px solid', borderLeftColor: step === undefined ? 'info.main' : c.stripe }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: description ? 0.5 : 2 }}>
-        <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: c.surfaceGreen, color: 'primary.main', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.875rem' }}>
-          {step}
-        </Box>
+        {step === undefined ? (
+          <InfoOutlinedIcon aria-hidden sx={{ width: 28, height: 28, color: 'info.main' }} />
+        ) : (
+          <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: c.surfaceGreen, color: 'primary.main', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.875rem' }}>
+            {step}
+          </Box>
+        )}
         <Typography variant="h6" component="h2" id={`${id}-title`}>{title}</Typography>
       </Box>
       {description && (

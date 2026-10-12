@@ -2,13 +2,13 @@
  * SetManagementPanel.tsx — step 2 of 3: the Set Management panel that slides
  * in over the map once a field is selected.
  *
- * One scrolling column of numbered cards, then a fixed footer:
+ * One scrolling column of cards, then a fixed footer:
+ *   ⓘ Test dataset     unnumbered demo-mode notice + Rainfed / Irrigated cards
  *   1 Run details      name (required) + notes
- *   2 Test dataset     demo-mode notice + Rainfed / Irrigated cards
- *   3 Field & soil  ┐
- *   4 Crop & planting ├ SetManagementForm (pre-filled from the dataset)
- *   5 Water & nitrogen┘
- *   6 Simulation period  year slider, 1980–2021 (FIRST/LAST_WEATHER_YEAR)
+ *   2 Field & soil  ┐
+ *   3 Crop & planting ├ SetManagementForm (pre-filled from the dataset)
+ *   4 Water & nitrogen┘
+ *   5 Simulation period  year slider, 1980–2021 (FIRST/LAST_WEATHER_YEAR)
  *   [Cancel]                                     [▶ Run SALUS]
  *
  * Demo-mode rule: picking a dataset loads its management answers, and the
@@ -23,7 +23,7 @@ import DemoNoticeText from '../form/DemoNotice';
 import { useColors } from '../../theme/colors';
 import { useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import { Alert, Box, Button, Divider, IconButton, MenuItem, Select, Slider, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Divider, IconButton, MenuItem, Select, Slider, TextField, Tooltip, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -160,6 +160,17 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
       {/* Scrolling cards */}
       {/* Scroll padding keeps keyboard focus clear of the panel's edges and footer */}
       <Box data-form-scroller sx={{ flex: 1, overflowY: 'auto', scrollPaddingBlock: '24px', p: dense ? 1.25 : 2, display: 'flex', flexDirection: 'column', gap: dense ? 1.25 : 2 }}>
+        {/* Demo notice: not a numbered step. Explains the mock data and picks which sample the run shows. */}
+        <FormSection id="dataset" title="Test dataset (demo mode)">
+          <Typography variant="body2" color="text.secondary">
+            <DemoNoticeText />
+          </Typography>
+          <DatasetPicker datasets={TEST_DATASETS} value={setup.datasetId} onChange={chooseDataset} columns={1} />
+          <Button size="small" startIcon={<RestartAltIcon />} onClick={() => chooseDataset(setup.datasetId)} sx={{ alignSelf: 'flex-start' }}>
+            Reset answers to {dataset.label.toLowerCase()} settings
+          </Button>
+        </FormSection>
+
         <FormSection id="details" step={1} title="Run details">
           <TextField
             label="Run name" required fullWidth size="small" value={setup.name}
@@ -174,19 +185,9 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
           />
         </FormSection>
 
-        <FormSection id="dataset" step={2} title="Test dataset" description="The sample results your run will show.">
-          <Alert severity="info" variant="outlined" sx={{ py: 0 }}>
-            <DemoNoticeText />
-          </Alert>
-          <DatasetPicker datasets={TEST_DATASETS} value={setup.datasetId} onChange={chooseDataset} columns={1} />
-          <Button size="small" startIcon={<RestartAltIcon />} onClick={() => chooseDataset(setup.datasetId)} sx={{ alignSelf: 'flex-start' }}>
-            Reset answers to {dataset.label.toLowerCase()} settings
-          </Button>
-        </FormSection>
+        <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={2} />
 
-        <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={3} />
-
-        <FormSection id="period" step={6} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}.`}>
+        <FormSection id="period" step={5} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}.`}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             <Typography id="sim-years-label" sx={{ fontWeight: 600, flex: 1, minWidth: 200 }}>How many years would you like to run SALUS?</Typography>
             <Select size="small" labelId="sim-years-label" value={durationValue} onChange={(e) => chooseDuration(e.target.value)} sx={{ minWidth: 112 }}>

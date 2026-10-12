@@ -213,15 +213,6 @@ export const HOW_TO_TOURS: Record<TourId, TourDefinition> = {
         phoneBody: 'Your pin is down and the Set Management form has opened under the map. Tapping the map again just moves the pin.',
       },
       {
-        id: 'details',
-        route: '/',
-        ensure: 'selectDemoField',
-        target: 'panel-details',
-        side: 'left',
-        title: 'Name your run',
-        body: 'Give the run a name you\'ll recognise later in My Runs. Notes are optional, e.g. what you\'re comparing.',
-      },
-      {
         id: 'dataset',
         route: '/',
         ensure: 'selectDemoField',
@@ -229,6 +220,15 @@ export const HOW_TO_TOURS: Record<TourId, TourDefinition> = {
         side: 'left',
         title: 'Test dataset (demo mode)',
         body: 'Until live SALUS runs are connected, results come from mock sample data (invented numbers, not SALUS output). Picking a dataset fills in the answers below with its settings.',
+      },
+      {
+        id: 'details',
+        route: '/',
+        ensure: 'selectDemoField',
+        target: 'panel-details',
+        side: 'left',
+        title: 'Name your run',
+        body: 'Give the run a name you\'ll recognise later in My Runs. Notes are optional, e.g. what you\'re comparing.',
       },
       {
         id: 'field',
