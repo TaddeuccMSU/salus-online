@@ -1,7 +1,8 @@
 /**
  * AppHeader.tsx — the white Spartan White app bar.
  *
- * Shows the SALUS leaf logo (src/assets/salus-logo.webp — swap that file
+ * Shows the globe + leaf logo (components/layout/GlobeLogo.tsx; the leaf is
+ * src/assets/salus-logo.webp — swap that file
  * to rebrand) and the SALUS Online wordmark on the left, and the main
  * navigation on the right, plus the ⚙ Settings pop-out (the colour scheme, white bar ⇄ white
  * on Spartan Green, see theme/chrome.tsx). The leaf logo sits straight on the
@@ -25,7 +26,10 @@ import { NavLink, Link as RouterLink } from 'react-router-dom';
 import { AppBar, Box, Button, Divider, IconButton, Menu, MenuItem, Toolbar, Typography, useMediaQuery } from '@mui/material';
 import { ChromeSurface, softPrimary, useChrome } from '../../theme/chrome';
 import MenuIcon from '@mui/icons-material/Menu';
-import salusLogo from '../../assets/salus-logo.webp';
+import GlobeLogo, { type LogoDesign } from './GlobeLogo';
+
+/** Header logo design ('leaf' or 'globe'), see GlobeLogo.tsx. */
+const LOGO_DESIGN: LogoDesign = 'leaf';
 
 /** Top-level destinations. `end` makes "/" only match the exact home route. */
 const NAV = [
@@ -56,7 +60,7 @@ export default function AppHeader() {
     return () => ro.disconnect();
   }, []);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const { variant } = useChrome();
+  const { variant, dark } = useChrome();
   const green = variant === 'green';
 
   return (
@@ -65,10 +69,8 @@ export default function AppHeader() {
       <Toolbar sx={{ gap: 2, minHeight: shortLandscape ? '52px !important' : { xs: 60, md: 68 } }}>
         {/* Wordmark — links home */}
         <Box component={RouterLink} to="/" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, textDecoration: 'none' }}>
-          {/* The leaf logo sits straight on the bar in every scheme (no white disc), as in Dark bars */}
-          <Box sx={{ display: 'flex' }}>
-            <Box component="img" src={salusLogo} alt="" sx={{ height: { xs: 34, md: 40 }, width: 'auto', display: 'block' }} />
-          </Box>
+          {/* Globe logo with "SALUS" (components/layout/GlobeLogo.tsx); lime on Green bars / Dark mode, green on White bars */}
+          <GlobeLogo design={LOGO_DESIGN} height={{ xs: 36, md: 44 }} onDark={green || dark} />
           <Box>
             <Typography sx={{ fontWeight: 800, fontSize: '1.375rem', lineHeight: 1, color: 'primary.main' }}>
               SALUS Online
