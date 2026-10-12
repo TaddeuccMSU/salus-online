@@ -19,6 +19,7 @@ import { useMemo } from 'react';
 import { alpha, Box, Button, Collapse, ThemeProvider, Tooltip, Typography } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import TuneIcon from '@mui/icons-material/Tune';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import type { Run, RunResults } from '../../types';
 import { useAppTheme } from '../../theme/chrome';
@@ -38,6 +39,8 @@ interface Props {
   tableOpen: boolean;
   /** Shows / hides the results table (button at the panel's top right; the banner's button does the same). */
   onToggleTable: () => void;
+  /** Opens the "Run new management" pop-up (Set Management for this field). */
+  onNewManagement: () => void;
 }
 
 const yn = (b: boolean) => (b ? 'Yes' : 'No');
@@ -87,7 +90,7 @@ const GREEN = tokens.color.spartanGreen;
 
 const fmt = (v: number | null) => (v === null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onToggleTable }: Props) {
+export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onToggleTable, onNewManagement }: Props) {
   const theme = useAppTheme();
   const c = useColors();
   const { units } = useUnits();
@@ -148,13 +151,17 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 return isChanged ? <Tooltip key={p.key} title={`Was: ${was}`} describeChild arrow>{item}</Tooltip> : item;
               })}
             </Box>
-            {prev && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                {changed.length
+            {/* Bottom row: what changed since the previous run (left) and "Run new management" (bottom right; not in the collapsible table). */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2, flexWrap: 'wrap', mt: 0.75 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ flex: 1, minWidth: 200 }}>
+                {prev && (changed.length
                   ? <>Highlighted: {changed.length} parameter{changed.length > 1 ? 's' : ''} changed since “{prev.name}”, the previous run at this field (hover for the old value).</>
-                  : <>Same parameters as “{prev.name}”, the previous run at this field.</>}
+                  : <>Same parameters as “{prev.name}”, the previous run at this field.</>)}
               </Typography>
-            )}
+              <Button variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={onNewManagement} aria-haspopup="dialog" sx={{ ml: 'auto' }}>
+                Run new management
+              </Button>
+            </Box>
           </Box>
 
           {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}

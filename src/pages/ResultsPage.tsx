@@ -25,7 +25,6 @@ import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ResultsSummaryPanel from '../components/results/ResultsSummaryPanel';
 import NewManagementDialog from '../components/results/NewManagementDialog';
-import TuneIcon from '@mui/icons-material/Tune';
 import PageContainer from '../components/layout/PageContainer';
 import SectionCard from '../components/layout/SectionCard';
 import Legend from '../components/layout/Legend';
@@ -272,20 +271,16 @@ export default function ResultsPage() {
         </Button>
         <RunSwitcher run={run} runs={runs} />
       </Box>
-      {/* Bottom row of the banner: the run's notes (if any) on the left, "Run new management" at the bottom right. */}
-      <Box sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, pb: 2, mt: -1, display: 'flex', alignItems: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
-        <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 200 }}>
+      {run.setup.description && (
+        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, pb: 2, mt: -1 }}>
           {run.setup.description}
         </Typography>
-        {/* Set Management for this same field in a pop-up, starting from this run's answers. */}
-        <Button variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={() => setNewMgmtOpen(true)} aria-haspopup="dialog" sx={{ ml: 'auto' }}>
-          Run new management
-        </Button>
-        <NewManagementDialog run={run} open={newMgmtOpen} onClose={() => setNewMgmtOpen(false)} />
-      </Box>
+      )}
+      {/* "Run new management" pop-up: Set Management for this same field, starting from this run's answers (button in the parameters panel). */}
+      <NewManagementDialog run={run} open={newMgmtOpen} onClose={() => setNewMgmtOpen(false)} />
       {/* Parameters always show; the results table under them opens / closes (remembered in this browser). */}
       {ready && data && (
-        <ResultsSummaryPanel run={run} runs={runs} data={data} tableOpen={summaryOpen} onToggleTable={toggleSummary} />
+        <ResultsSummaryPanel run={run} runs={runs} data={data} tableOpen={summaryOpen} onToggleTable={toggleSummary} onNewManagement={() => setNewMgmtOpen(true)} />
       )}
     </Box>
     </ChromeSurface>
