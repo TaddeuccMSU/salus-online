@@ -8,8 +8,9 @@
  *    field (within ~250 m), parameters that changed since it are highlighted
  *    in lime with the old value in a tooltip, so you can see what a re-run
  *    changed.
- * 2. "Results over N years" (collapsible), as a Table or as Cards (one card
- *    per measure; a Show filter picks which statistics the cards list):
+ * 2. "Results over N years" (collapsible), as a Table, or on small screens
+ *    (≤ 600 px) also as Cards (one card per measure; a Show filter picks
+ *    which statistics the cards list):
  *    Best / Average / Median / Worst / Total per
  *    measure, in an MUI X DataGrid (CSV export in its toolbar). The numbers
  *    come from data/resultsSummary.ts and are MOCK in this demo.
@@ -126,10 +127,11 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const c = useColors();
   const { units } = useUnits();
   const dark = theme.palette.mode === 'dark';
-  // Table or Cards (phones held upright start with Cards); which statistics the cards show. Both remembered.
-  const phone = useMediaQuery('(max-width: 600px) and (orientation: portrait)');
+  // Cards are offered on small screens only (≤ 600 px wide), where they start as the view;
+  // larger screens always get the table. The small-screen choice and the cards' statistics are remembered.
+  const small = useMediaQuery('(max-width: 600px)');
   const [savedView, setSavedView] = useState<SummaryView | null>(() => load<SummaryView | null>(VIEW_KEY, (v): v is SummaryView => v === 'table' || v === 'cards', null));
-  const view: SummaryView = savedView ?? (phone ? 'cards' : 'table');
+  const view: SummaryView = small ? savedView ?? 'cards' : 'table';
   const chooseView = (v: SummaryView) => { setSavedView(v); save(VIEW_KEY, v); };
   const [stats, setStats] = useState<StatKey[]>(() => load(STATS_KEY, (v): v is StatKey[] => Array.isArray(v) && v.length > 0 && v.every((k) => STAT_COLUMNS.some((s) => s.key === k)), DEFAULT_STATS));
   const chooseStats = (v: StatKey[]) => { setStats(v); save(STATS_KEY, v); };
@@ -205,7 +207,8 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}
           <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
-            {/* View: Table (DataGrid) or Cards (one card per measure, showing only the chosen statistics). */}
+            {/* Small screens only: Table (DataGrid) or Cards (one card per measure, showing only the chosen statistics). */}
+            {small && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
               <ToggleButtonGroup exclusive size="small" value={view} onChange={(_, v: SummaryView | null) => v && chooseView(v)} aria-label="Results view">
                 <ToggleButton value="table">Table</ToggleButton>
@@ -224,6 +227,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 </>
               )}
             </Box>
+            )}
             {view === 'cards' ? (
               <Box component="ul" aria-label={`Results summary over ${nYears} years`} sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                 {rows.map((r) => {
