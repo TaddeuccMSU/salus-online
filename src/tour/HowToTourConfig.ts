@@ -218,8 +218,8 @@ export const HOW_TO_TOURS: Record<TourId, TourDefinition> = {
         ensure: 'selectDemoField',
         target: 'panel-dataset',
         side: 'left',
-        title: 'Test dataset (demo mode)',
-        body: 'Until live SALUS runs are connected, results come from mock sample data (invented numbers, not SALUS output). Picking a dataset fills in the answers below with its settings.',
+        title: 'About this demo',
+        body: 'Until live SALUS runs are connected, results come from mock sample data (invented numbers, not SALUS output). The answers below start from the sample’s settings, and only Irrigation changes the results.',
       },
       {
         id: 'details',
@@ -246,7 +246,7 @@ export const HOW_TO_TOURS: Record<TourId, TourDefinition> = {
         target: 'panel-nitrogen',
         side: 'left',
         title: 'Water & nitrogen',
-        body: 'Irrigation and fertilizer drive nitrate leaching. Answers marked “Changes results” switch the demo data; the rest are saved with your run. Prefer US units? Use the Form settings button (⚙) in this panel’s header.',
+        body: 'Irrigation and fertilizer drive nitrate leaching. In this demo only Irrigation changes the results; the rest are saved with your run. Prefer US units? Use the Form settings button (⚙) in this panel’s header.',
       },
       {
         id: 'period',

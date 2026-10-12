@@ -3,7 +3,7 @@
  * in over the map once a field is selected.
  *
  * One scrolling column of cards, then a fixed footer:
- *   ⓘ Test dataset     unnumbered demo-mode notice + Rainfed / Irrigated cards
+ *   ⓘ About this demo  unnumbered demo-mode notice (dataset picker removed for now)
  *   1 Run details      name (required) + notes
  *   2 Field & soil  ┐
  *   3 Crop & planting ├ SetManagementForm (pre-filled from the dataset)
@@ -11,8 +11,8 @@
  *   5 Simulation period  year slider, 1980–2021 (FIRST/LAST_WEATHER_YEAR)
  *   [Cancel]                                     [▶ Run SALUS]
  *
- * Demo-mode rule: picking a dataset loads its management answers, and the
- * Irrigation answer and the dataset stay in sync (they are the same choice
+ * Demo-mode rule: the Irrigation answer picks the sample dataset (rainfed or
+ * irrigated); there is no dataset picker for now (the same choice
  * in the current test data). "Run SALUS" calls `onSubmit(setup, inputs)`.
  * `dense` tightens the header, padding and footer for short landscape
  * screens (the 50/50 split layout on phones).
@@ -26,12 +26,10 @@ import dayjs from 'dayjs';
 import { Box, Button, Divider, IconButton, MenuItem, Select, Slider, TextField, Tooltip, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FormSection from '../form/FormSection';
-import DatasetPicker from '../form/DatasetPicker';
 import SetManagementForm, { summarize, validate } from '../form/SetManagementForm';
 import { DEFAULT_END_YEAR, DEFAULT_START_YEAR, FIRST_WEATHER_YEAR, LAST_WEATHER_YEAR } from '../../data/options';
-import { RESULT_DRIVING_FIELDS, TEST_DATASETS, datasetForInputs, getDataset } from '../../data/datasets';
+import { TEST_DATASETS, datasetForInputs, getDataset } from '../../data/datasets';
 import { formatLatLng } from '../../hooks/useReverseGeocode';
 import type { LatLng, ManagementInputs, RunSetup } from '../../types';
 import { tokens } from '../../theme/tokens';
@@ -87,19 +85,11 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
     if (!nameEdited) setSetup((s) => ({ ...s, name: initialSetup(placeName).name }));
   }, [placeName, nameEdited]);
 
-  const dataset = getDataset(setup.datasetId);
   const { units } = useUnits(); // Metric / US for the answers (⚙ in the header)
   const errors = validate(inputs, units);
   const nameError = !setup.name.trim() ? 'Give the run a name' : undefined;
   const invalid = Object.keys(errors).length > 0 || !!nameError;
   const years = setup.endYear - setup.startYear + 1;
-
-  /** Pick a dataset: load its management answers. The chosen years are kept (any of 1980–2021). */
-  const chooseDataset = (id: string) => {
-    const d = getDataset(id);
-    setInputs(d.defaults);
-    setSetup((s) => ({ ...s, datasetId: id }));
-  };
 
   /**
    * Simulation length picker ("How many years…?"): 5–35 years in 5-year steps,
@@ -160,15 +150,11 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
       {/* Scrolling cards */}
       {/* Scroll padding keeps keyboard focus clear of the panel's edges and footer */}
       <Box data-form-scroller sx={{ flex: 1, overflowY: 'auto', scrollPaddingBlock: '24px', p: dense ? 1.25 : 2, display: 'flex', flexDirection: 'column', gap: dense ? 1.25 : 2 }}>
-        {/* Demo notice: not a numbered step. Explains the mock data and picks which sample the run shows. */}
-        <FormSection id="dataset" title="Test dataset (demo mode)">
+        {/* Demo notice: not a numbered step. Explains the mock data. (The Rainfed / Irrigated picker was removed for now; the Irrigation answer still picks the sample, see changeInputs.) */}
+        <FormSection id="dataset" title="About this demo">
           <Typography variant="body2" color="text.secondary">
             <DemoNoticeText />
           </Typography>
-          <DatasetPicker datasets={TEST_DATASETS} value={setup.datasetId} onChange={chooseDataset} columns={1} />
-          <Button size="small" startIcon={<RestartAltIcon />} onClick={() => chooseDataset(setup.datasetId)} sx={{ alignSelf: 'flex-start' }}>
-            Reset answers to {dataset.label.toLowerCase()} settings
-          </Button>
         </FormSection>
 
         <FormSection id="details" step={1} title="Run details">
@@ -185,7 +171,7 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
           />
         </FormSection>
 
-        <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} drivers={RESULT_DRIVING_FIELDS} firstStep={2} />
+        <SetManagementForm value={inputs} onChange={changeInputs} errors={touched ? errors : {}} firstStep={2} />
 
         <FormSection id="period" step={5} title="Simulation period" description={`Choose any years from ${FIRST_WEATHER_YEAR} to ${LAST_WEATHER_YEAR}.`}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
