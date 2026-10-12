@@ -16,7 +16,7 @@
 import { Box, Collapse, InputAdornment, MenuItem, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import type { ManagementInputs } from '../../types';
-import { CROPS, MATURITY, MONTHS, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
+import { CROPS, MATURITY, MONTHS, PLANTING_MONTHS, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
 import { useUnits } from '../../state/UnitsContext';
 import { fmtNum, inputFromDisplay, inputToDisplay, inputUnit, type UnitSystem } from '../../theme/units';
 import FormSection from './FormSection';
@@ -131,7 +131,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
           </Grid>
           <Grid size={{ xs: 8, sm: 6 }}>
             <TextField select fullWidth label="Planting month" value={v.plantingMonth} onChange={(e) => set('plantingMonth', Number(e.target.value))}>
-              {MONTHS.slice(2, 7).map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+              {MONTHS.filter((o) => (PLANTING_MONTHS as readonly number[]).includes(o.value)).map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid size={{ xs: 4, sm: 6 }}>

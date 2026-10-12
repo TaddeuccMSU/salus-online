@@ -37,6 +37,9 @@ export const TILLAGE = [
   { value: 'moldboard', label: 'Moldboard plow' },
 ] as const;
 
+/** Planting months the form offers: April and May only (values match MONTHS). */
+export const PLANTING_MONTHS = [4, 5] as const;
+
 export const MATURITY = [100, 110, 120].map((d) => ({
   value: d,
   label: `${d}-day corn`,
