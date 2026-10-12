@@ -15,11 +15,12 @@
  * green results banner, like the other dialogs and pop-overs there.
  */
 import { useMemo } from 'react';
-import { Box, ThemeProvider, Tooltip, Typography } from '@mui/material';
+import { alpha, Box, ThemeProvider, Tooltip, Typography } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import type { Run, RunResults } from '../../types';
 import { useAppTheme } from '../../theme/chrome';
 import { useColors } from '../../theme/colors';
+import { tokens } from '../../theme/tokens';
 import { useUnits } from '../../state/UnitsContext';
 import { inputToDisplay, inputUnit, nRateText, type UnitSystem } from '../../theme/units';
 import { MATURITY, MONTHS, TILLAGE, productLabel, soilDepthLabel } from '../../data/options';
@@ -74,12 +75,16 @@ export function previousRunAtField(run: Run, runs: Run[]): Run | undefined {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
 }
 
+/** Accent for the table's shading (Spartan Green tints). */
+const GREEN = tokens.color.spartanGreen;
+
 const fmt = (v: number | null) => (v === null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export default function ResultsSummaryPanel({ run, runs, data }: Props) {
   const theme = useAppTheme();
   const c = useColors();
   const { units } = useUnits();
+  const dark = theme.palette.mode === 'dark';
 
   const params = runParameters(run, units);
   const prev = previousRunAtField(run, runs);
@@ -93,7 +98,7 @@ export default function ResultsSummaryPanel({ run, runs, data }: Props) {
     valueFormatter: (v: number | null) => fmt(v),
   });
   const columns: GridColDef<SummaryRow>[] = [
-    { field: 'metric', headerName: `Results over ${nYears} year${nYears > 1 ? 's' : ''} (${run.setup.startYear}–${run.setup.endYear})`, flex: 2, minWidth: 230, sortable: false },
+    { field: 'metric', cellClassName: 'summary-metric', headerClassName: 'summary-metric-header', headerName: `Results over ${nYears} year${nYears > 1 ? 's' : ''} (${run.setup.startYear}–${run.setup.endYear})`, flex: 2, minWidth: 230, sortable: false },
     num('best', 'Best'), num('avg', 'Average'), num('median', 'Median'), num('worst', 'Worst'), num('total', 'Total'),
   ];
 
@@ -148,7 +153,17 @@ export default function ResultsSummaryPanel({ run, runs, data }: Props) {
               showToolbar
               getRowHeight={() => 'auto'}
               aria-label={`Results summary over ${nYears} years`}
-              sx={{ '& .MuiDataGrid-cell': { py: 0.75 }, '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 700 } }}
+              // Green accent shading: Spartan Green header row, a deeper tint on the
+              // result-type column and a light tint on the Best…Total columns.
+              sx={{
+                '& .MuiDataGrid-cell': { py: 0.75, bgcolor: alpha(GREEN, dark ? 0.25 : 0.05) },
+                '& .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.55 : 0.16), fontWeight: 700 },
+                '& .MuiDataGrid-columnHeader, & .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller--header': { bgcolor: `${tokens.color.spartanGreen} !important`, color: '#fff' },
+                '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 700 },
+                '& .MuiDataGrid-columnSeparator': { color: alpha('#fff', 0.3) },
+                '& .MuiDataGrid-row:hover .MuiDataGrid-cell': { bgcolor: alpha(GREEN, dark ? 0.4 : 0.1) },
+                '& .MuiDataGrid-row:hover .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.7 : 0.22) },
+              }}
             />
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
               Demo: mock numbers. N leaching follows the sample&apos;s daily data; yield, water balance, emissions and soil values are invented for this prototype.
