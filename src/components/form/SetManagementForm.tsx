@@ -155,7 +155,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
       </FormSection>
 
       <FormSection id="nitrogen" step={firstStep + 2} title="Water & nitrogen" description="Inputs that drive nitrate leaching and N-use efficiency.">
-        <YesNo label="Irrigation" helper="SALUS irrigates automatically when soil water runs low." value={v.irrigate} onChange={(b) => set('irrigate', b)} badge={drives('irrigate')} />
+        <YesNo label="Irrigation" value={v.irrigate} onChange={(b) => set('irrigate', b)} badge={drives('irrigate')} />
         <YesNo label="Inorganic fertilizer" info="split fertilizer application (at planting plus a side dressing)" value={v.inorganicFertilizer} onChange={(b) => set('inorganicFertilizer', b)} />
         <Collapse in={v.inorganicFertilizer} unmountOnExit>
           <Grid container spacing={2} sx={{ pl: { sm: 2 }, borderLeft: { sm: '2px solid' }, borderColor: { sm: 'divider' } }}>
@@ -176,7 +176,7 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             </Grid>
           </Grid>
         </Collapse>
-        <YesNo label="Manure or compost" value={v.manure} onChange={(b) => set('manure', b)} />
+        <YesNo label="Apply manure or compost" value={v.manure} onChange={(b) => set('manure', b)} />
       </FormSection>
 
     </Box>
