@@ -33,6 +33,7 @@ import PlaceIcon from '@mui/icons-material/PlaceOutlined';
 import StatusChip from './StatusChip';
 import { useColors } from '../../theme/colors';
 import { inputToDisplay, type UnitSystem } from '../../theme/units';
+import { nitrogenRate } from '../../data/options';
 import type { Run } from '../../types';
 
 /** How the cards are ordered. */
@@ -63,7 +64,7 @@ export interface RunCardListProps {
 /** The settings line on a card and in the CSV (same wording as the grid columns). */
 function nRateText(r: Run, units: UnitSystem) {
   if (!r.inputs.inorganicFertilizer) return 'No N';
-  return `${Math.round(inputToDisplay('rate', r.inputs.fertilizerRate, units))} ${units === 'metric' ? 'kg/ha' : 'lb/ac'}`;
+  return `${Math.round(inputToDisplay('rate', nitrogenRate(r.inputs), units))} ${units === 'metric' ? 'kg/ha' : 'lb/ac'}`;
 }
 const created = (r: Run) => new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 

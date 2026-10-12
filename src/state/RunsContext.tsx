@@ -12,7 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { LatLng, ManagementInputs, Run, RunSetup } from '../types';
 import { DEMO_RUNS } from '../data/demoRuns';
 import { datasetForInputs } from '../data/datasets';
-import { MATURITY } from '../data/options';
+import { DEFAULT_INPUTS, MATURITY } from '../data/options';
 
 const STORAGE_KEY = 'salus-online.runs.v2';
 
@@ -40,6 +40,7 @@ function migrateInputs(run: Run): Run {
   const tillageMap: Record<string, ManagementInputs['tillage']> = { reduced: 'minimum', conventional: 'moldboard' };
   const newTillage = tillageMap[inputs.tillage as string];
   if (newTillage) inputs.tillage = newTillage;
+  if (!inputs.fertilizerProduct) inputs.fertilizerProduct = DEFAULT_INPUTS.fertilizerProduct; // added in v0.3.2
   const days = MATURITY.map((o) => o.value);
   if (!days.includes(inputs.maturityDays)) {
     inputs.maturityDays = days.reduce((best, d) => (Math.abs(d - inputs.maturityDays) < Math.abs(best - inputs.maturityDays) ? d : best));

@@ -49,6 +49,7 @@ import { useReportDownloads } from '../report/useReportDownloads';
 import { useRuns } from '../state/RunsContext';
 import { useUnits } from '../state/UnitsContext';
 import { inputToDisplay } from '../theme/units';
+import { nitrogenRate } from '../data/options';
 import { useTour } from '../tour/TourProvider';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
 import type { Run } from '../types';
@@ -177,7 +178,7 @@ export default function RunsPage() {
       },
       { field: 'placeName', headerName: 'Location', flex: 1, minWidth: 120 },
       { field: 'soil', headerName: 'Soil', width: 110, valueGetter: (_v, r) => r.inputs.soilTexture },
-      { field: 'nRate', headerName: 'N rate', type: 'number', width: 90, valueGetter: (_v, r) => (r.inputs.inorganicFertilizer ? Math.round(inputToDisplay('rate', r.inputs.fertilizerRate, units)) : 0), valueFormatter: (v: number) => (v ? `${v} ${units === 'metric' ? 'kg/ha' : 'lb/ac'}` : '—') },
+      { field: 'nRate', headerName: 'N rate', type: 'number', width: 90, valueGetter: (_v, r) => (r.inputs.inorganicFertilizer ? Math.round(inputToDisplay('rate', nitrogenRate(r.inputs), units)) : 0), valueFormatter: (v: number) => (v ? `${v} ${units === 'metric' ? 'kg/ha' : 'lb/ac'}` : '—') },
       { field: 'water', headerName: 'Water', width: 95, valueGetter: (_v, r) => (r.inputs.irrigate ? 'Irrigated' : 'Rainfed') },
       { field: 'period', headerName: 'Years', width: 100, valueGetter: (_v, r) => `${r.setup.startYear}–${r.setup.endYear}` },
       { field: 'createdAt', headerName: 'Created', type: 'dateTime', width: 115, valueGetter: (v: string) => new Date(v), valueFormatter: (v: Date) => v.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) },

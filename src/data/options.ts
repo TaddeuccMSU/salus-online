@@ -63,6 +63,38 @@ export const LAST_WEATHER_YEAR = 2021;
 export const DEFAULT_START_YEAR = 2010;
 export const DEFAULT_END_YEAR = 2014;
 
+/**
+ * Fertilizer products offered when the rate is entered as product (from the
+ * live SALUS Online form). `n` is the nitrogen fraction by weight.
+ */
+export const FERTILIZER_PRODUCTS = [
+  { value: 'ammonium-nitrate', label: 'Ammonium Nitrate', n: 0.34 },
+  { value: 'ammonium-sulfate', label: 'Ammonium Sulfate', n: 0.205 },
+  { value: 'calcium-nitrate', label: 'Calcium Nitrate', n: 0.155 },
+  { value: 'cal-nitro', label: 'Cal-nitro', n: 0.26 },
+  { value: 'urea', label: 'Urea', n: 0.46 },
+  { value: 'anhydrous-ammonia', label: 'Anhydrous Ammonia', n: 0.822 },
+  { value: 'aqua-ammonia', label: 'Aqua Ammonia', n: 0.21 },
+  { value: 'uan', label: 'Urea-ammonium Nitrate', n: 0.3 },
+  { value: 'low-pressure-n', label: 'Low Pressure N Solutions', n: 0.4 },
+] as const;
+
+/** A product as shown in the list, e.g. "Ammonium Nitrate: 34% N". */
+export function productLabel(value: string): string {
+  const p = FERTILIZER_PRODUCTS.find((o) => o.value === value) ?? FERTILIZER_PRODUCTS[0];
+  return `${p.label}: ${Math.round(p.n * 1000) / 10}% N`;
+}
+
+/** Nitrogen fraction of a product (falls back to the first product). */
+export function productN(value: string): number {
+  return (FERTILIZER_PRODUCTS.find((o) => o.value === value) ?? FERTILIZER_PRODUCTS[0]).n;
+}
+
+/** Nitrogen applied, lbs N/acre, whether the rate was entered as N or as product. */
+export function nitrogenRate(v: Pick<ManagementInputs, 'fertilizerBasis' | 'fertilizerRate' | 'fertilizerProduct'>): number {
+  return v.fertilizerBasis === 'product' ? v.fertilizerRate * productN(v.fertilizerProduct) : v.fertilizerRate;
+}
+
 /** Sensible defaults matching the live site's pre-filled form. */
 export const DEFAULT_INPUTS: ManagementInputs = {
   soilTexture: 'Silty Clay',
@@ -78,5 +110,6 @@ export const DEFAULT_INPUTS: ManagementInputs = {
   inorganicFertilizer: true,
   fertilizerBasis: 'nitrogen',
   fertilizerRate: 150,
+  fertilizerProduct: 'ammonium-nitrate',
   manure: false,
 };

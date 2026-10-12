@@ -33,6 +33,7 @@ import FieldMiniMap from '../components/results/FieldMiniMap';
 import { ChromeSurface, softPrimary } from '../theme/chrome';
 import { useRuns } from '../state/RunsContext';
 import { useRunResults } from '../hooks/useRunResults';
+import { nitrogenRate } from '../data/options';
 import { sliceResults } from '../data/sliceResults';
 import { useDateWindow } from '../hooks/useDateWindow';
 import { nitrateRamp } from '../theme/chartColors';
@@ -229,7 +230,7 @@ export default function ResultsPage() {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 800 }}>{run.name}</Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
             {[run.placeName, run.inputs.soilTexture, run.inputs.irrigate ? 'Irrigated' : 'Rainfed',
-              run.inputs.inorganicFertilizer ? nRateText(run.inputs.fertilizerRate, units) : 'No inorganic N',
+              run.inputs.inorganicFertilizer ? nRateText(nitrogenRate(run.inputs), units) : 'No inorganic N',
               `${run.setup.startYear}–${run.setup.endYear}`].map((t) => (
               <Chip key={t} size="small" label={t} sx={{ bgcolor: softPrimary(0.12), color: 'primary.main', fontWeight: 600 }} />
             ))}

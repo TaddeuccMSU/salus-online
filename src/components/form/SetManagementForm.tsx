@@ -16,9 +16,9 @@
 import { Box, Collapse, InputAdornment, MenuItem, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import type { ManagementInputs } from '../../types';
-import { CROPS, MATURITY, MONTHS, PLANTING_MONTHS, daysInMonth, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
+import { CROPS, FERTILIZER_PRODUCTS, MATURITY, MONTHS, PLANTING_MONTHS, daysInMonth, nitrogenRate, productLabel, productN, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
 import { useUnits } from '../../state/UnitsContext';
-import { fmtNum, inputFromDisplay, inputToDisplay, inputUnit, type UnitSystem } from '../../theme/units';
+import { fmtNum, inputFromDisplay, inputToDisplay, inputUnit, nRateText, type UnitSystem } from '../../theme/units';
 import FormSection from './FormSection';
 import YesNo from './YesNo';
 
@@ -35,7 +35,10 @@ export function summarize(v: ManagementInputs, units: UnitSystem = 'us'): string
     `${v.soilTexture}, ${soilDepthLabel(v.soilDepth, units).toLowerCase()}`,
     label(TILLAGE, v.tillage),
     `${label(MATURITY, v.maturityDays)} for ${v.cornUse} at ${fmtNum(Math.round(inputToDisplay('population', v.plantPopulation, units)), 0)} ${inputUnit('population', units).replace('acre', 'ac')}, planted ${label(MONTHS, v.plantingMonth)} ${v.plantingDay}`,
-    v.inorganicFertilizer ? `${fmtNum(inputToDisplay('rate', v.fertilizerRate, units), 0)} ${inputUnit('rate', units).replace('acre', 'ac')} ${v.fertilizerBasis === 'nitrogen' ? 'N' : 'product'}` : 'no inorganic N',
+    !v.inorganicFertilizer ? 'no inorganic N'
+      : v.fertilizerBasis === 'product'
+        ? `${fmtNum(inputToDisplay('rate', v.fertilizerRate, units), 0)} ${inputUnit('rate', units).replace('acre', 'ac')} ${productLabel(v.fertilizerProduct).split(':')[0]} (${nRateText(nitrogenRate(v), units)})`
+        : nRateText(v.fertilizerRate, units),
     v.irrigate ? 'irrigated' : 'rainfed',
     v.coverCrop ? 'cover crop' : null,
     v.manure ? 'manure applied' : null,
@@ -45,14 +48,19 @@ export function summarize(v: ManagementInputs, units: UnitSystem = 'us'): string
 /**
  * Returns a map of field → error message (limits shown in the user's units).
  * Limits are checked on the stored US values: 10,000–60,000 seeds/acre and
- * 1–400 lbs/acre. Empty object means valid.
+ * 1–400 lbs N/acre (for a product, the product rate that gives 1–400 lbs N).
+ * Empty object means valid.
  */
 export function validate(v: ManagementInputs, units: UnitSystem = 'us'): Partial<Record<keyof ManagementInputs, string>> {
   const e: Partial<Record<keyof ManagementInputs, string>> = {};
   const pop = (n: number) => fmtNum(Math.round(inputToDisplay('population', n, units) / 100) * 100, 0);
   const rate = (n: number) => fmtNum(inputToDisplay('rate', n, units), 0);
   if (v.plantPopulation < 10000 || v.plantPopulation > 60000) e.plantPopulation = `Between ${pop(10000)} and ${pop(60000)} ${inputUnit('population', units)}`;
-  if (v.inorganicFertilizer && (v.fertilizerRate <= 0 || v.fertilizerRate > 400)) e.fertilizerRate = `Between ${rate(1)} and ${rate(400)} ${inputUnit('rate', units)}`;
+  if (v.inorganicFertilizer) {
+    const n = nitrogenRate(v);
+    const per = v.fertilizerBasis === 'product' ? productN(v.fertilizerProduct) : 1; // lbs N per lb entered
+    if (n < 1 || n > 400) e.fertilizerRate = `Between ${rate(Math.ceil(1 / per))} and ${rate(Math.floor(400 / per))} ${inputUnit('rate', units)}`;
+  }
   const monthDays = daysInMonth(v.plantingMonth);
   if (v.plantingDay < 1 || v.plantingDay > monthDays) e.plantingDay = `1–${monthDays}`;
   return e;
@@ -159,21 +167,52 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
         <YesNo label="Inorganic fertilizer" info="split fertilizer application (at planting plus a side dressing)" value={v.inorganicFertilizer} onChange={(b) => set('inorganicFertilizer', b)} />
         <Collapse in={v.inorganicFertilizer} unmountOnExit>
           <Grid container spacing={2} sx={{ pl: { sm: 2 }, borderLeft: { sm: '2px solid' }, borderColor: { sm: 'divider' } }}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={12}>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Enter rate as</Typography>
-              <ToggleButtonGroup exclusive size="small" value={v.fertilizerBasis} onChange={(_, t) => t && set('fertilizerBasis', t)}>
-                <ToggleButton value="nitrogen">Actual N</ToggleButton>
+              {/* Switching keeps the same amount of N: the rate is converted with the product's N fraction. */}
+              <ToggleButtonGroup
+                exclusive size="small" value={v.fertilizerBasis}
+                onChange={(_, t: ManagementInputs['fertilizerBasis'] | null) => {
+                  if (!t || t === v.fertilizerBasis) return;
+                  const pct = productN(v.fertilizerProduct);
+                  const rateNext = t === 'product' ? Math.round(v.fertilizerRate / pct) : Math.round(v.fertilizerRate * pct);
+                  onChange({ ...v, fertilizerBasis: t, fertilizerRate: rateNext });
+                }}
+              >
+                <ToggleButton value="nitrogen">Nitrogen</ToggleButton>
                 <ToggleButton value="product">Product</ToggleButton>
               </ToggleButtonGroup>
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth type="number" label={v.fertilizerBasis === 'nitrogen' ? 'Nitrogen rate' : 'Product rate'}
-                value={shownRate} onChange={(e) => set('fertilizerRate', inputFromDisplay('rate', Number(e.target.value), units))}
-                error={!!errors.fertilizerRate} helperText={errors.fertilizerRate}
-                slotProps={{ input: { endAdornment: <InputAdornment position="end">{inputUnit('rate', units)}</InputAdornment> } }}
-              />
-            </Grid>
+            {v.fertilizerBasis === 'product' ? (
+              <>
+                {/* Product: which fertilizer, and how much of it (the N it supplies is shown under the rate). */}
+                <Grid size={12}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>How much product do you apply?</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 7 }}>
+                  <TextField select fullWidth label="Fertilizer product" value={v.fertilizerProduct} onChange={(e) => set('fertilizerProduct', e.target.value)}>
+                    {FERTILIZER_PRODUCTS.map((o) => <MenuItem key={o.value} value={o.value}>{productLabel(o.value)}</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 5 }}>
+                  <TextField
+                    fullWidth type="number" label="Product rate"
+                    value={shownRate} onChange={(e) => set('fertilizerRate', inputFromDisplay('rate', Number(e.target.value), units))}
+                    error={!!errors.fertilizerRate} helperText={errors.fertilizerRate ?? `= ${nRateText(nitrogenRate(v), units)}`}
+                    slotProps={{ input: { endAdornment: <InputAdornment position="end">{inputUnit('rate', units)}</InputAdornment> }, htmlInput: { min: 0 } }}
+                  />
+                </Grid>
+              </>
+            ) : (
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  fullWidth type="number" label="Nitrogen rate"
+                  value={shownRate} onChange={(e) => set('fertilizerRate', inputFromDisplay('rate', Number(e.target.value), units))}
+                  error={!!errors.fertilizerRate} helperText={errors.fertilizerRate}
+                  slotProps={{ input: { endAdornment: <InputAdornment position="end">{inputUnit('rate', units)}</InputAdornment> }, htmlInput: { min: 0 } }}
+                />
+              </Grid>
+            )}
           </Grid>
         </Collapse>
         <YesNo label="Apply manure or compost" value={v.manure} onChange={(b) => set('manure', b)} />

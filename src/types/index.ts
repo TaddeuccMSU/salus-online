@@ -25,7 +25,8 @@ export interface ManagementInputs {
   coverCrop: boolean;
   inorganicFertilizer: boolean;
   fertilizerBasis: 'nitrogen' | 'product';
-  fertilizerRate: number; // lbs / acre
+  fertilizerRate: number; // lbs / acre: of N, or of product when fertilizerBasis is 'product'
+  fertilizerProduct: string; // FERTILIZER_PRODUCTS value (used when fertilizerBasis is 'product')
   manure: boolean;
 }
 

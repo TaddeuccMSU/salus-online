@@ -15,7 +15,7 @@ import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/
 import dayjs from 'dayjs';
 import type { ComponentProps, ReactNode } from 'react';
 import type { Run } from '../types';
-import { MATURITY, MONTHS, TILLAGE, soilDepthLabel } from '../data/options';
+import { MATURITY, MONTHS, TILLAGE, nitrogenRate, productLabel, soilDepthLabel } from '../data/options';
 import { factorOf, inputToDisplay, inputUnit, layerLabel, nRateText, unitOf, type UnitSystem } from '../theme/units';
 import { getDataset } from '../data/datasets';
 import { formatLatLng } from '../hooks/useReverseGeocode';
@@ -129,7 +129,7 @@ export default function RunReportDocument({ run, data: raw, palette = DEFAULT_CO
   const label = <T extends { value: unknown; label: string }>(list: readonly T[], val: unknown) => list.find((o) => o.value === val)?.label ?? '';
   const dataset = getDataset(run.setup.datasetId);
   const years = `${run.setup.startYear}–${run.setup.endYear}`;
-  const chips = [run.placeName, i.soilTexture, i.irrigate ? 'Irrigated' : 'Rainfed', i.inorganicFertilizer ? nRateText(i.fertilizerRate, units) : 'No inorganic N', years];
+  const chips = [run.placeName, i.soilTexture, i.irrigate ? 'Irrigated' : 'Rainfed', i.inorganicFertilizer ? nRateText(nitrogenRate(i), units) : 'No inorganic N', years];
   const t = data.totals;
   const half = (CONTENT_W - 12) / 2;
   const depthLabels = data.layers.map((l) => layerLabel(l.top, l.bottom, units));
@@ -179,7 +179,10 @@ export default function RunReportDocument({ run, data: raw, palette = DEFAULT_CO
               ['Plant population', `${n0(inputToDisplay('population', i.plantPopulation, units))} ${inputUnit('population', units)}`],
               ['Planting date', `${label(MONTHS, i.plantingMonth)} ${i.plantingDay}`],
               ['Irrigation', i.irrigate ? 'Yes (automatic)' : 'No'],
-              ['Inorganic N', i.inorganicFertilizer ? `${n0(inputToDisplay('rate', i.fertilizerRate, units))} ${inputUnit('rate', units)} (${i.fertilizerBasis === 'nitrogen' ? 'actual N' : 'product'})` : 'None'],
+              ['Inorganic N', !i.inorganicFertilizer ? 'None'
+                : i.fertilizerBasis === 'product'
+                  ? `${n0(inputToDisplay('rate', i.fertilizerRate, units))} ${inputUnit('rate', units)} ${productLabel(i.fertilizerProduct)} (${nRateText(nitrogenRate(i), units)})`
+                  : nRateText(i.fertilizerRate, units)],
               ['Cover crop / manure', `${i.coverCrop ? 'Yes' : 'No'} / ${i.manure ? 'Yes' : 'No'}`],
             ]} />
           </Card>
