@@ -40,6 +40,11 @@ export const TILLAGE = [
 /** Planting months the form offers: April and May only (values match MONTHS). */
 export const PLANTING_MONTHS = [4, 5] as const;
 
+/** Number of days in a month (1–12); uses a non-leap year, so February is 28. */
+export function daysInMonth(month: number): number {
+  return new Date(2021, month, 0).getDate();
+}
+
 export const MATURITY = [100, 110, 120].map((d) => ({
   value: d,
   label: `${d}-day corn`,

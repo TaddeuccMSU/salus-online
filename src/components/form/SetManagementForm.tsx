@@ -16,7 +16,7 @@
 import { Box, Collapse, InputAdornment, MenuItem, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import type { ManagementInputs } from '../../types';
-import { CROPS, MATURITY, MONTHS, PLANTING_MONTHS, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
+import { CROPS, MATURITY, MONTHS, PLANTING_MONTHS, daysInMonth, SOIL_DEPTHS, SOIL_TEXTURES, TILLAGE, soilDepthLabel } from '../../data/options';
 import { useUnits } from '../../state/UnitsContext';
 import { fmtNum, inputFromDisplay, inputToDisplay, inputUnit, type UnitSystem } from '../../theme/units';
 import FormSection from './FormSection';
@@ -53,8 +53,8 @@ export function validate(v: ManagementInputs, units: UnitSystem = 'us'): Partial
   const rate = (n: number) => fmtNum(inputToDisplay('rate', n, units), 0);
   if (v.plantPopulation < 10000 || v.plantPopulation > 60000) e.plantPopulation = `Between ${pop(10000)} and ${pop(60000)} ${inputUnit('population', units)}`;
   if (v.inorganicFertilizer && (v.fertilizerRate <= 0 || v.fertilizerRate > 400)) e.fertilizerRate = `Between ${rate(1)} and ${rate(400)} ${inputUnit('rate', units)}`;
-  const daysInMonth = new Date(2021, v.plantingMonth, 0).getDate();
-  if (v.plantingDay < 1 || v.plantingDay > daysInMonth) e.plantingDay = `1–${daysInMonth}`;
+  const monthDays = daysInMonth(v.plantingMonth);
+  if (v.plantingDay < 1 || v.plantingDay > monthDays) e.plantingDay = `1–${monthDays}`;
   return e;
 }
 
@@ -130,17 +130,26 @@ export default function SetManagementForm({ value: v, onChange, errors = {}, dri
             </TextField>
           </Grid>
           <Grid size={{ xs: 8, sm: 6 }}>
-            <TextField select fullWidth label="Planting month" value={v.plantingMonth} onChange={(e) => set('plantingMonth', Number(e.target.value))}>
+            {/* Changing the month keeps the day if it exists in the new month, else uses that month's last day. */}
+            <TextField
+              select fullWidth label="Planting month" value={v.plantingMonth}
+              onChange={(e) => {
+                const month = Number(e.target.value);
+                onChange({ ...v, plantingMonth: month, plantingDay: Math.min(v.plantingDay, daysInMonth(month)) });
+              }}
+            >
               {MONTHS.filter((o) => (PLANTING_MONTHS as readonly number[]).includes(o.value)).map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid size={{ xs: 4, sm: 6 }}>
+            {/* Day: a list of the selected month's days (30 for April, 31 for May). */}
             <TextField
-              fullWidth type="number" label="Day" value={v.plantingDay}
+              select fullWidth label="Day" value={v.plantingDay}
               onChange={(e) => set('plantingDay', Number(e.target.value))}
               error={!!errors.plantingDay} helperText={errors.plantingDay}
-              slotProps={{ htmlInput: { min: 1, max: 31 } }}
-            />
+            >
+              {Array.from({ length: daysInMonth(v.plantingMonth) }, (_, i) => i + 1).map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+            </TextField>
           </Grid>
         </Grid>
         <YesNo label="Winter cover crop" helper="A cereal rye cover crop after harvest." value={v.coverCrop} onChange={(b) => set('coverCrop', b)} />
