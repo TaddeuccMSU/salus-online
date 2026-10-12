@@ -151,9 +151,9 @@ export default function ResultsPage() {
   const ctl = useDateWindow(data?.days);
   // "Run new management" pop-up (Set Management for this field).
   const [newMgmtOpen, setNewMgmtOpen] = useState(false);
-  // Results summary panel under the banner: open/closed is remembered in this browser.
+  // Results table under the parameters: shown by default; hiding it is remembered in this browser.
   const [summaryOpen, setSummaryOpen] = useState<boolean>(() => {
-    try { return localStorage.getItem(SUMMARY_KEY) === '1'; } catch { return false; }
+    try { return localStorage.getItem(SUMMARY_KEY) !== '0'; } catch { return true; }
   });
   const toggleSummary = () => setSummaryOpen((o) => {
     try { localStorage.setItem(SUMMARY_KEY, o ? '0' : '1'); } catch { /* storage blocked: fine */ }
