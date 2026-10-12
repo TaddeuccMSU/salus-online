@@ -95,10 +95,10 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
    * Simulation length picker ("How many years…?"): 5–35 years in 5-year steps,
    * or all of 1980–2021. Picking a length keeps the last year where it is and
    * moves the first year (sliding the window right if it would pass 1980).
-   * Dragging the slider to another length shows "Custom".
+   * The slider can't change the length: dragging a handle moves the whole range.
    */
   const ALL_YEARS = LAST_WEATHER_YEAR - FIRST_WEATHER_YEAR + 1;
-  const durationValue = years === ALL_YEARS ? 'all' : YEAR_CHOICES.includes(years) ? String(years) : 'custom';
+  const durationValue = years === ALL_YEARS ? 'all' : String(years);
   const chooseDuration = (choice: string) => {
     const n = choice === 'all' ? ALL_YEARS : Number(choice);
     let end = setup.endYear;
@@ -179,11 +179,10 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
             <Select size="small" labelId="sim-years-label" value={durationValue} onChange={(e) => chooseDuration(e.target.value)} sx={{ minWidth: 112 }}>
               {YEAR_CHOICES.map((n) => <MenuItem key={n} value={String(n)}>{n}</MenuItem>)}
               <MenuItem value="all">All</MenuItem>
-              {durationValue === 'custom' && <MenuItem value="custom" disabled>Custom</MenuItem>}
             </Select>
           </Box>
           <Box sx={{ px: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Drag the handles below to change the time range.</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{durationValue === 'all' ? 'All years are selected.' : `Drag either handle to move the ${years}-year range.`}</Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography sx={{ fontWeight: 600 }}>{setup.startYear} – {setup.endYear}</Typography>
               <Typography color="text.secondary">{years} year{years > 1 ? 's' : ''}</Typography>
@@ -195,10 +194,15 @@ export default function SetManagementPanel({ location, placeName, onClose, onSub
               step={1}
               // Labels every 10 years plus the last year (2020 is skipped so it doesn't collide with 2021).
               marks={[1980, 1990, 2000, 2010, LAST_WEATHER_YEAR].map((y) => ({ value: y, label: String(y) }))}
-              disableSwap
-              onChange={(_, v) => {
+              onChange={(_, v, activeThumb) => {
+                // The length comes from the "How many years" select; dragging either handle moves
+                // the whole range (the other handle is pushed along), stopping at 1980 and 2021.
                 const [a, b] = v as number[];
-                setSetup({ ...setup, startYear: a, endYear: b });
+                const gap = years - 1;
+                const start = activeThumb === 0
+                  ? Math.max(FIRST_WEATHER_YEAR, Math.min(a, LAST_WEATHER_YEAR - gap))
+                  : Math.max(FIRST_WEATHER_YEAR, Math.min(b, LAST_WEATHER_YEAR) - gap);
+                setSetup({ ...setup, startYear: start, endYear: start + gap });
               }}
               getAriaLabel={(i) => (i === 0 ? 'First year' : 'Last year')}
               // The year shows in a bubble on the focused thumb; arrow keys move it one year.
