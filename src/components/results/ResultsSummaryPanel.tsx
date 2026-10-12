@@ -8,9 +8,9 @@
  *    field (within ~250 m), parameters that changed since it are highlighted
  *    in lime with the old value in a tooltip, so you can see what a re-run
  *    changed.
- * 2. "Results over N years" (collapsible), as a Table, or on small screens
- *    (≤ 600 px) also as Cards (one card per measure; a Show filter picks
- *    which statistics the cards list):
+ * 2. "Results over N years" (collapsible), as a Table, or, when the panel is
+ *    too narrow for the whole table, also as Cards (one card per measure; a
+ *    Show filter picks the one statistic the cards show):
  *    Best / Average / Median / Worst / Total per
  *    measure, in an MUI X DataGrid (CSV export in its toolbar). The numbers
  *    come from data/resultsSummary.ts and are MOCK in this demo.
@@ -19,7 +19,8 @@
  * green results banner, like the other dialogs and pop-overs there.
  */
 import { useMemo, useState } from 'react';
-import { alpha, Box, Button, Collapse, ThemeProvider, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery } from '@mui/material';
+import { alpha, Box, Button, Collapse, ThemeProvider, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
+import { useElementWidth } from '../../hooks/useElementWidth';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -102,9 +103,11 @@ const STAT_COLUMNS = [
 type StatKey = (typeof STAT_COLUMNS)[number]['key'];
 type SummaryView = 'table' | 'cards';
 const VIEW_KEY = 'salus-online.resultsSummaryView.v1';
-const STATS_KEY = 'salus-online.resultsSummaryStats.v1';
-/** Cards start with three statistics so each card stays short; the filter adds or removes them. */
-const DEFAULT_STATS: StatKey[] = ['best', 'avg', 'worst'];
+const STAT_KEY = 'salus-online.resultsSummaryStat.v1';
+/** The statistic the cards show first (one at a time). */
+const DEFAULT_STAT: StatKey = 'avg';
+/** Narrowest width the table fits in without side-scrolling (its columns' minimum widths + borders); narrower → Cards. */
+const TABLE_MIN_WIDTH = 230 + 5 * 96 + 2;
 
 /** Reads a remembered choice (browser storage may be blocked or hold old data). */
 function load<T>(key: string, ok: (v: unknown) => v is T, fallback: T): T {
@@ -127,14 +130,17 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const c = useColors();
   const { units } = useUnits();
   const dark = theme.palette.mode === 'dark';
-  // Cards are offered on small screens only (≤ 600 px wide), where they start as the view;
-  // larger screens always get the table. The small-screen choice and the cards' statistics are remembered.
-  const small = useMediaQuery('(max-width: 600px)');
+  // Cards are offered only when the panel is too narrow for the whole table (it would side-scroll);
+  // there they start as the view. Wider panels always get the table. The narrow-panel choice and the
+  // cards' statistic are remembered.
+  const { ref: widthRef, width } = useElementWidth<HTMLDivElement>(1600);
+  const small = width < TABLE_MIN_WIDTH;
   const [savedView, setSavedView] = useState<SummaryView | null>(() => load<SummaryView | null>(VIEW_KEY, (v): v is SummaryView => v === 'table' || v === 'cards', null));
   const view: SummaryView = small ? savedView ?? 'cards' : 'table';
   const chooseView = (v: SummaryView) => { setSavedView(v); save(VIEW_KEY, v); };
-  const [stats, setStats] = useState<StatKey[]>(() => load(STATS_KEY, (v): v is StatKey[] => Array.isArray(v) && v.length > 0 && v.every((k) => STAT_COLUMNS.some((s) => s.key === k)), DEFAULT_STATS));
-  const chooseStats = (v: StatKey[]) => { setStats(v); save(STATS_KEY, v); };
+  const [stat, setStat] = useState<StatKey>(() => load(STAT_KEY, (v): v is StatKey => STAT_COLUMNS.some((s) => s.key === v), DEFAULT_STAT));
+  const chooseStat = (v: StatKey) => { setStat(v); save(STAT_KEY, v); };
+  const statLabel = STAT_COLUMNS.find((s) => s.key === stat)?.label ?? '';
 
   const params = runParameters(run, units);
   const prev = previousRunAtField(run, runs);
@@ -155,7 +161,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   return (
     <ThemeProvider theme={theme}>
       <Box data-tour="results-summary" sx={{ bgcolor: 'background.paper', color: 'text.primary', borderTop: 1, borderColor: 'divider' }}>
-        <Box sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, py: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box ref={widthRef} sx={{ maxWidth: 1600, mx: 'auto', px: { xs: 2, md: 3 }, py: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* 1 · Parameters, with changes since the previous run at this field highlighted */}
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -207,46 +213,43 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}
           <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
-            {/* Small screens only: Table (DataGrid) or Cards (one card per measure, showing only the chosen statistics). */}
+            {/* Narrow panel only (the table would need side-scrolling): Table or Cards, then one statistic to show on the cards. */}
             {small && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
               <ToggleButtonGroup exclusive size="small" value={view} onChange={(_, v: SummaryView | null) => v && chooseView(v)} aria-label="Results view">
                 <ToggleButton value="table">Table</ToggleButton>
                 <ToggleButton value="cards">Cards</ToggleButton>
               </ToggleButtonGroup>
               {view === 'cards' && (
-                <>
-                  <Typography id="summary-stats-label" variant="body2" sx={{ fontWeight: 600, ml: { sm: 1 } }}>Show:</Typography>
-                  {/* Multi-select filter; at least one statistic stays on. */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography id="summary-stats-label" variant="body2" sx={{ fontWeight: 600 }}>Show:</Typography>
+                  {/* One statistic at a time. */}
                   <ToggleButtonGroup
-                    size="small" value={stats} aria-labelledby="summary-stats-label" sx={{ flexWrap: 'wrap', gap: 0.5 }}
-                    onChange={(_, v: StatKey[]) => v.length && chooseStats(STAT_COLUMNS.map((s) => s.key).filter((k) => v.includes(k)))}
+                    exclusive size="small" value={stat} aria-labelledby="summary-stats-label" sx={{ flexWrap: 'wrap', gap: 0.5 }}
+                    onChange={(_, v: StatKey | null) => v && chooseStat(v)}
                   >
                     {STAT_COLUMNS.map((s) => <ToggleButton key={s.key} value={s.key}>{s.label}</ToggleButton>)}
                   </ToggleButtonGroup>
-                </>
+                </Box>
               )}
             </Box>
             )}
             {view === 'cards' ? (
-              <Box component="ul" aria-label={`Results summary over ${nYears} years`} sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+              <Box component="ul" aria-label={`Results summary over ${nYears} years: ${statLabel.toLowerCase()}`} sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
                 {rows.map((r) => {
-                  const shown = STAT_COLUMNS.filter((s) => stats.includes(s.key) && r[s.key] !== null);
+                  const v = r[stat];
                   return (
-                    <Box component="li" key={r.id} sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: alpha(GREEN, dark ? 0.6 : 0.25), bgcolor: alpha(GREEN, dark ? 0.25 : 0.05) }}>
-                      <Typography component="h3" sx={{ px: 1.5, py: 1, fontWeight: 700, fontSize: '0.9375rem', bgcolor: alpha(GREEN, dark ? 0.55 : 0.16) }}>{r.metric}</Typography>
-                      {shown.length ? (
-                        <Box component="dl" sx={{ m: 0, px: 1.5, py: 1, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 0.5 }}>
-                          {shown.map((s) => (
-                            <Box key={s.key} sx={{ display: 'contents' }}>
-                              <Typography component="dt" variant="body2" color="text.secondary">{s.label}</Typography>
-                              <Typography component="dd" variant="body2" sx={{ m: 0, textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r[s.key])}</Typography>
-                            </Box>
-                          ))}
+                    <Box component="li" key={r.id} sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: tokens.color.spartanGreen, bgcolor: alpha(GREEN, dark ? 0.25 : 0.05), display: 'flex', flexDirection: 'column' }}>
+                      {/* Card title in the table header's dark Spartan Green */}
+                      <Typography component="h3" sx={{ px: 1.5, py: 1, fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.3, bgcolor: tokens.color.spartanGreen, color: '#fff', flex: 1 }}>{r.metric}</Typography>
+                      {v !== null ? (
+                        <Box sx={{ px: 1.5, py: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{statLabel}</Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(v)}</Typography>
                         </Box>
                       ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, py: 1 }}>
-                          Only {STAT_COLUMNS.filter((s) => r[s.key] !== null).map((s) => s.label.toLowerCase()).join(' / ')} for this measure.
+                          Not available
                         </Typography>
                       )}
                     </Box>
