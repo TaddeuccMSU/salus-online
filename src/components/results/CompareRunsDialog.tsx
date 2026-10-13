@@ -12,19 +12,20 @@
  *   measure that counts for a goal, the run with the better value (by that
  *   measure's direction, e.g. lowest leaching, highest yield) is shaded in the
  *   goal's colour; ties shade every tied run; two goals split the cell.
- * - "What's different" lists the parameters that are not the same in all runs.
+ * - "What's different" lists the parameters that are not the same in all runs;
+ *   hovering or focusing a run's column header shows all its parameters.
  *
  * Numbers come from the same mock summaries as the Results summary table.
  * Full-screen on phones.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   alpha, Box, Button, Dialog, DialogContent, DialogTitle, IconButton, MenuItem, TextField,
-  ToggleButton, ToggleButtonGroup, Typography, useMediaQuery,
+  ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { DataGrid, useGridApiRef, type GridColDef } from '@mui/x-data-grid';
 import type { Run } from '../../types';
 import { useUnits } from '../../state/UnitsContext';
 import { useIsDark } from '../../theme/colors';
@@ -114,26 +115,62 @@ export default function CompareRunsDialog({ run, runs, open, onClose }: Props) {
   const GREEN = tokens.color.spartanGreen;
   const statLabel = STAT_COLUMNS.find((s) => s.key === stat)?.label ?? '';
 
+  // Parameters that are not the same in every picked run.
+  const params = picked.map((r) => runParameters(r, units));
+  const diffs = params[0]?.map((p, i) => ({ label: p.label, values: params.map((ps) => ps[i].value) }))
+    .filter((d) => new Set(d.values).size > 1) ?? [];
+  const diffKeys = new Set(diffs.map((d) => d.label));
+  // Which run header's parameter tooltip is open (mouse hover or keyboard focus on the header).
+  const [headerTip, setHeaderTip] = useState<string | null>(null);
+  const apiRef = useGridApiRef();
+  useEffect(() => {
+    if (!ready || !apiRef.current) return;
+    const api = apiRef.current;
+    const offFocus = api.subscribeEvent('columnHeaderFocus', (p) => setHeaderTip(LETTERS.includes(p.field) ? p.field : null));
+    const offBlur = api.subscribeEvent('columnHeaderBlur', () => setHeaderTip(null));
+    return () => { offFocus(); offBlur(); };
+  }, [ready, apiRef]);
+
   const columns: GridColDef<CompareRow>[] = [
     { field: 'metric', headerName: `${statLabel} value`, flex: 2, minWidth: phone ? 140 : 200, sortable: false, cellClassName: 'summary-metric' },
     ...picked.map((r, k): GridColDef<CompareRow> => ({
-      field: LETTERS[k], type: 'number', flex: 1, minWidth: phone ? 96 : 130, sortable: false,
+      field: LETTERS[k], type: 'number', headerClassName: 'run-head', flex: 1, minWidth: phone ? 96 : 130, sortable: false,
       headerName: `${LETTERS[k]} · ${r.name}`,
+      // Hover or keyboard-focus the header to see this run's parameters (ones that differ in bold); shown above the header (flips below when there is no room) so the results stay visible.
       renderHeader: () => (
-        <Box sx={{ lineHeight: 1.2, textAlign: 'right', overflow: 'hidden' }}>
-          <Box component="span" sx={{ fontWeight: 800 }}>Run {LETTERS[k]}</Box>
-          <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.name}</Box>
-        </Box>
+        <Tooltip
+          open={headerTip === LETTERS[k]} onOpen={() => setHeaderTip(LETTERS[k])} onClose={() => setHeaderTip((t) => (t === LETTERS[k] ? null : t))}
+          arrow placement="top" describeChild
+          slotProps={{ tooltip: { sx: { maxWidth: 340 } } }}
+          title={
+            <Box sx={{ py: 0.5 }}>
+              <Box sx={{ fontWeight: 800, mb: 0.25 }}>Run {LETTERS[k]} · {r.name}</Box>
+              <Box sx={{ opacity: 0.85, mb: 0.75 }}>{r.placeName}</Box>
+              <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+                {params[k].map((p) => {
+                  const differs = diffKeys.has(p.label);
+                  return (
+                    <Box component="li" key={p.key} sx={{ fontWeight: differs ? 800 : 400 }}>
+                      {p.label}: {p.value}{differs ? ' •' : ''}
+                    </Box>
+                  );
+                })}
+              </Box>
+              {diffKeys.size > 0 && <Box sx={{ mt: 0.75, opacity: 0.85, fontSize: '0.75rem' }}>• differs between the runs</Box>}
+            </Box>
+          }
+        >
+          <Box sx={{ lineHeight: 1.2, textAlign: 'right', overflow: 'hidden', cursor: 'help', width: '100%' }}>
+            <Box component="span" sx={{ fontWeight: 800, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>Run {LETTERS[k]}</Box>
+            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.name}</Box>
+          </Box>
+        </Tooltip>
       ),
       valueFormatter: (v: number | null) => fmt(v),
       cellClassName: (p) => { const g = winGoals(p.row, LETTERS[k]); return g.length ? `win-${g.join('-')}` : ''; },
     })),
   ];
 
-  // Parameters that are not the same in every picked run.
-  const params = picked.map((r) => runParameters(r, units));
-  const diffs = params[0]?.map((p, i) => ({ label: p.label, values: params.map((ps) => ps[i].value) }))
-    .filter((d) => new Set(d.values).size > 1) ?? [];
 
   const runLabel = (r: Run) => `${r.name} · ${r.setup.startYear}–${r.setup.endYear}${metres(r.location, run.location) <= 250 ? '' : ` · ${r.placeName}`}`;
 
@@ -192,6 +229,7 @@ export default function CompareRunsDialog({ run, runs, open, onClose }: Props) {
           // A plain block wrapper lets the grid grow to its rows (inside the flex dialog it was clipped on phones).
           <Box sx={{ display: 'block', flexShrink: 0 }}>
           <DataGrid
+            apiRef={apiRef}
             rows={rows}
             columns={columns}
             density="compact"
@@ -204,6 +242,8 @@ export default function CompareRunsDialog({ run, runs, open, onClose }: Props) {
             aria-label={`Compare runs: ${statLabel.toLowerCase()} of each measure`}
             sx={{
               flexShrink: 0, // full height inside the scrolling dialog (phones)
+              // Run headers: the hover area for the parameters tooltip fills the whole header cell.
+              '& .run-head .MuiDataGrid-columnHeaderTitleContainer, & .run-head .MuiDataGrid-columnHeaderTitleContainerContent': { flex: 1, width: '100%' },
               '& .MuiDataGrid-cell': { py: 0.75, bgcolor: alpha(GREEN, dark ? 0.25 : 0.05) },
               '& .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.55 : 0.16), fontWeight: 700 },
               '& .MuiDataGrid-columnHeader, & .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller--header': { bgcolor: `${GREEN} !important`, color: '#fff' },
