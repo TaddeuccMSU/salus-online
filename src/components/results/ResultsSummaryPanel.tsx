@@ -35,8 +35,7 @@ import { useUnits } from '../../state/UnitsContext';
 import { inputToDisplay, inputUnit, nRateText, type UnitSystem } from '../../theme/units';
 import { MATURITY, MONTHS, TILLAGE, productLabel, soilDepthLabel } from '../../data/options';
 import { summaryRows, yearlyMetrics, type SummaryRow } from '../../data/resultsSummary';
-import GoalFilter from './GoalFilter';
-import { FILTERS_KEY, GOALS, STAT_COLUMNS, fmt, goalBackground, load, rowGoals, save, type GoalKey, type StatKey } from './summaryShared';
+import { STAT_COLUMNS, fmt, load, save, type StatKey } from './summaryShared';
 
 interface Props {
   run: Run;
@@ -104,16 +103,6 @@ const DEFAULT_STAT: StatKey = 'avg';
 /** Narrowest width the table fits in without side-scrolling (its columns' minimum widths + borders); narrower → Cards. */
 const TABLE_MIN_WIDTH = 230 + 5 * 96 + 2;
 
-/** The statistic that "wins" in a row: Best if it has one, else Average, else Total. */
-function winningStat(r: SummaryRow): StatKey | null {
-  return r.best !== null ? 'best' : r.avg !== null ? 'avg' : r.total !== null ? 'total' : null;
-}
-/** Active goals that this cell wins for (in GOALS order). */
-function cellGoals(r: SummaryRow, stat: StatKey, active: GoalKey[]): GoalKey[] {
-  if (winningStat(r) !== stat) return [];
-  const goals = rowGoals(r.id);
-  return GOALS.map((g) => g.key).filter((k) => goals.includes(k) && active.includes(k));
-}
 
 
 
@@ -133,16 +122,6 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const [stat, setStat] = useState<StatKey>(() => load(STAT_KEY, (v): v is StatKey => STAT_COLUMNS.some((s) => s.key === v), DEFAULT_STAT));
   const chooseStat = (v: StatKey) => { setStat(v); save(STAT_KEY, v); };
   const statLabel = STAT_COLUMNS.find((s) => s.key === stat)?.label ?? '';
-  // "Filter results" goals that are switched on (remembered in this browser).
-  const [goals, setGoals] = useState<GoalKey[]>(() => load(FILTERS_KEY, (v): v is GoalKey[] => Array.isArray(v) && v.every((k) => GOALS.some((g) => g.key === k)), []));
-  const chooseGoals = (v: GoalKey[]) => { setGoals(v); save(FILTERS_KEY, v); };
-  const shadeA = dark ? 0.55 : 0.38;
-  // DataGrid classes for every goal combination a cell can have (win-agro, win-agro-econ, …).
-  const combos: GoalKey[][] = [['agro'], ['econ'], ['env'], ['agro', 'econ']];
-  const winSx = Object.fromEntries(combos.flatMap((c) => {
-    const bg = { background: `${goalBackground(c, shadeA)} !important`, fontWeight: 700 };
-    return [[`& .MuiDataGrid-cell.win-${c.join('-')}`, bg], [`& .MuiDataGrid-row:hover .MuiDataGrid-cell.win-${c.join('-')}`, bg]];
-  }));
 
   // "Compare with another run" pop-up.
   const [compareOpen, setCompareOpen] = useState(false);
@@ -156,11 +135,6 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const num = (field: keyof SummaryRow, headerName: string): GridColDef<SummaryRow> => ({
     field, headerName, type: 'number', flex: 1, minWidth: 96, sortable: false,
     valueFormatter: (v: number | null) => fmt(v),
-    // Shade the cell when it wins for an active "Filter results" goal.
-    cellClassName: (params) => {
-      const g = cellGoals(params.row, field as StatKey, goals);
-      return g.length ? `win-${g.join('-')}` : '';
-    },
   });
   const columns: GridColDef<SummaryRow>[] = [
     { field: 'metric', cellClassName: 'summary-metric', headerClassName: 'summary-metric-header', headerName: `Results over ${nYears} year${nYears > 1 ? 's' : ''} (${run.setup.startYear}–${run.setup.endYear})`, flex: 2, minWidth: 230, sortable: false },
@@ -229,8 +203,6 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}
           <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
-            {/* Filter results: shade the winning value of each measure for the chosen goals (green / blue / red). */}
-            <GoalFilter value={goals} onChange={chooseGoals} sx={{ mb: 1.5 }} />
             {/* Narrow panel only (the table would need side-scrolling): Table or Cards, then one statistic to show on the cards. */}
             {small && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
@@ -262,7 +234,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                       {/* Card title in the table header's dark Spartan Green */}
                       <Typography component="h3" sx={{ px: 1.5, py: 1, fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.3, bgcolor: tokens.color.spartanGreen, color: '#fff', flex: 1 }}>{r.metric}</Typography>
                       {v !== null ? (
-                        <Box sx={{ px: 1.5, py: 1, ...(cellGoals(r, stat, goals).length ? { background: goalBackground(cellGoals(r, stat, goals), shadeA) } : {}) }}>
+                        <Box sx={{ px: 1.5, py: 1 }}>
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{statLabel}</Typography>
                           <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(v)}</Typography>
                         </Box>
@@ -296,14 +268,13 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 '& .MuiDataGrid-columnSeparator': { color: alpha('#fff', 0.3) },
                 '& .MuiDataGrid-row:hover .MuiDataGrid-cell': { bgcolor: alpha(GREEN, dark ? 0.4 : 0.1) },
                 '& .MuiDataGrid-row:hover .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.7 : 0.22) },
-                ...winSx,
               }}
             />
             )}
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
               Demo: mock numbers. N leaching follows the sample&apos;s daily data; yield, water balance, emissions and soil values are invented for this prototype.
               Best and worst follow what is better for each measure (e.g. lowest leaching, highest yield).
-              Filter results shades each measure&apos;s winning value for the goals you pick: yield and the N efficiencies count as agronomic and economic, ET, water use efficiency and hot days as agronomic, the rest as environmental.
+              To shade winners by agronomic, economic or environmental goals, use Compare with another run.
             </Typography>
           </Box>
           </Collapse>
