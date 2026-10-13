@@ -317,7 +317,7 @@ export const HOW_TO_TOURS: Record<TourId, TourDefinition> = {
         target: 'results-table-toggle',
         side: 'left',
         title: 'Results table',
-        body: 'Try it: Show results table opens the summary for the whole run: the best, average, median, worst and total of each measure (yield, N leaching, efficiencies, water balance and more). Download it as a CSV from the table’s toolbar. Press it again to hide the table.',
+        body: 'Try it: Show results table opens the summary for the whole run: the best, average, median, worst and total of each measure (yield, N leaching, efficiencies, water balance and more). Filter results (Best Agronomic, Economic or Environmental) shades the winning value of each measure in green, blue or red. Download it as a CSV from the table’s toolbar. Press it again to hide the table.',
         phoneBody: 'Try it: Show results table opens the summary for the whole run, one card per measure (yield, N leaching, water and more). Pick Best, Average, Median, Worst or Total under Show. Switch to Table for everything at once.',
       },
       {

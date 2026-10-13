@@ -109,6 +109,42 @@ const DEFAULT_STAT: StatKey = 'avg';
 /** Narrowest width the table fits in without side-scrolling (its columns' minimum widths + borders); narrower → Cards. */
 const TABLE_MIN_WIDTH = 230 + 5 * 96 + 2;
 
+/**
+ * "Filter results" goals. Turning one on shades the winning cell (the Best
+ * value; Average or Total when a measure has no Best) of every measure that
+ * counts for that goal, in the goal's colour. A cell that wins for two goals
+ * is split half-and-half between both colours.
+ */
+const GOALS = [
+  { key: 'agro', label: 'Best Agronomic', color: '#43A047' },
+  { key: 'econ', label: 'Best Economic', color: '#1E88E5' },
+  { key: 'env', label: 'Best Environmental', color: '#E53935' },
+] as const;
+type GoalKey = (typeof GOALS)[number]['key'];
+const FILTERS_KEY = 'salus-online.resultsFilters.v1';
+/** Which goals each measure counts for (by SUMMARY_ROWS id); every other measure is Environmental only. */
+const ROW_GOALS: Record<string, GoalKey[]> = {
+  yield: ['agro', 'econ'], nue: ['agro', 'econ'], nfe: ['agro', 'econ'],
+  et: ['agro'], wue: ['agro'], hot: ['agro'],
+};
+const rowGoals = (id: string): GoalKey[] => ROW_GOALS[id] ?? ['env'];
+/** The statistic that "wins" in a row: Best if it has one, else Average, else Total. */
+function winningStat(r: SummaryRow): StatKey | null {
+  return r.best !== null ? 'best' : r.avg !== null ? 'avg' : r.total !== null ? 'total' : null;
+}
+/** Active goals that this cell wins for (in GOALS order). */
+function cellGoals(r: SummaryRow, stat: StatKey, active: GoalKey[]): GoalKey[] {
+  if (winningStat(r) !== stat) return [];
+  const goals = rowGoals(r.id);
+  return GOALS.map((g) => g.key).filter((k) => goals.includes(k) && active.includes(k));
+}
+/** Cell background for 1 or 2 winning goals (2 = left half / right half). */
+function goalBackground(goals: GoalKey[], a: number): string {
+  const col = (k: GoalKey) => alpha(GOALS.find((g) => g.key === k)!.color, a);
+  if (goals.length === 1) return col(goals[0]);
+  return `linear-gradient(90deg, ${col(goals[0])} 50%, ${col(goals[1])} 50%)`;
+}
+
 /** Reads a remembered choice (browser storage may be blocked or hold old data). */
 function load<T>(key: string, ok: (v: unknown) => v is T, fallback: T): T {
   try {
@@ -141,6 +177,16 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const [stat, setStat] = useState<StatKey>(() => load(STAT_KEY, (v): v is StatKey => STAT_COLUMNS.some((s) => s.key === v), DEFAULT_STAT));
   const chooseStat = (v: StatKey) => { setStat(v); save(STAT_KEY, v); };
   const statLabel = STAT_COLUMNS.find((s) => s.key === stat)?.label ?? '';
+  // "Filter results" goals that are switched on (remembered in this browser).
+  const [goals, setGoals] = useState<GoalKey[]>(() => load(FILTERS_KEY, (v): v is GoalKey[] => Array.isArray(v) && v.every((k) => GOALS.some((g) => g.key === k)), []));
+  const chooseGoals = (v: GoalKey[]) => { setGoals(v); save(FILTERS_KEY, v); };
+  const shadeA = dark ? 0.55 : 0.38;
+  // DataGrid classes for every goal combination a cell can have (win-agro, win-agro-econ, …).
+  const combos: GoalKey[][] = [['agro'], ['econ'], ['env'], ['agro', 'econ']];
+  const winSx = Object.fromEntries(combos.flatMap((c) => {
+    const bg = { background: `${goalBackground(c, shadeA)} !important`, fontWeight: 700 };
+    return [[`& .MuiDataGrid-cell.win-${c.join('-')}`, bg], [`& .MuiDataGrid-row:hover .MuiDataGrid-cell.win-${c.join('-')}`, bg]];
+  }));
 
   const params = runParameters(run, units);
   const prev = previousRunAtField(run, runs);
@@ -152,6 +198,11 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
   const num = (field: keyof SummaryRow, headerName: string): GridColDef<SummaryRow> => ({
     field, headerName, type: 'number', flex: 1, minWidth: 96, sortable: false,
     valueFormatter: (v: number | null) => fmt(v),
+    // Shade the cell when it wins for an active "Filter results" goal.
+    cellClassName: (params) => {
+      const g = cellGoals(params.row, field as StatKey, goals);
+      return g.length ? `win-${g.join('-')}` : '';
+    },
   });
   const columns: GridColDef<SummaryRow>[] = [
     { field: 'metric', cellClassName: 'summary-metric', headerClassName: 'summary-metric-header', headerName: `Results over ${nYears} year${nYears > 1 ? 's' : ''} (${run.setup.startYear}–${run.setup.endYear})`, flex: 2, minWidth: 230, sortable: false },
@@ -216,6 +267,29 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           {/* 2 · Best / Average / Median / Worst / Total (collapsible; the parameters above always show) */}
           <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
+            {/* Filter results: shade the winning value of each measure for the chosen goals (green / blue / red). */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+              <Typography id="summary-filter-label" variant="body2" sx={{ fontWeight: 600 }}>Filter results:</Typography>
+              <ToggleButtonGroup
+                size="small" value={goals} aria-labelledby="summary-filter-label" sx={{ flexWrap: 'wrap', gap: 0.5 }}
+                onChange={(_, v: GoalKey[]) => chooseGoals(GOALS.map((g) => g.key).filter((k) => v.includes(k)))}
+              >
+                {GOALS.map((g) => (
+                  <ToggleButton
+                    key={g.key} value={g.key}
+                    sx={{
+                      gap: 0.75,
+                      '&.Mui-selected, &.Mui-selected:hover': { bgcolor: g.color, borderColor: g.color, color: '#fff' },
+                      // the theme's ✓ on selected toggles; the colour dot is enough here
+                      '&.Mui-selected::before': { display: 'none' },
+                    }}
+                  >
+                    <Box component="span" aria-hidden sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: g.color, border: '1.5px solid #fff', flexShrink: 0 }} />
+                    {g.label}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Box>
             {/* Narrow panel only (the table would need side-scrolling): Table or Cards, then one statistic to show on the cards. */}
             {small && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
@@ -247,7 +321,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                       {/* Card title in the table header's dark Spartan Green */}
                       <Typography component="h3" sx={{ px: 1.5, py: 1, fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.3, bgcolor: tokens.color.spartanGreen, color: '#fff', flex: 1 }}>{r.metric}</Typography>
                       {v !== null ? (
-                        <Box sx={{ px: 1.5, py: 1 }}>
+                        <Box sx={{ px: 1.5, py: 1, ...(cellGoals(r, stat, goals).length ? { background: goalBackground(cellGoals(r, stat, goals), shadeA) } : {}) }}>
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{statLabel}</Typography>
                           <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(v)}</Typography>
                         </Box>
@@ -281,12 +355,14 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 '& .MuiDataGrid-columnSeparator': { color: alpha('#fff', 0.3) },
                 '& .MuiDataGrid-row:hover .MuiDataGrid-cell': { bgcolor: alpha(GREEN, dark ? 0.4 : 0.1) },
                 '& .MuiDataGrid-row:hover .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.7 : 0.22) },
+                ...winSx,
               }}
             />
             )}
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
               Demo: mock numbers. N leaching follows the sample&apos;s daily data; yield, water balance, emissions and soil values are invented for this prototype.
               Best and worst follow what is better for each measure (e.g. lowest leaching, highest yield).
+              Filter results shades each measure&apos;s winning value for the goals you pick: yield and the N efficiencies count as agronomic and economic, ET, water use efficiency and hot days as agronomic, the rest as environmental.
             </Typography>
           </Box>
           </Collapse>
