@@ -41,7 +41,7 @@ interface Props {
   data: RunResults;
   /** Is the results table shown? (The parameters are always shown.) */
   tableOpen: boolean;
-  /** Shows / hides the results table (button at the panel's top right; the banner's button does the same). */
+  /** Shows / hides the results table (button beside "Run new management"). */
   onToggleTable: () => void;
   /** Opens the "Run new management" pop-up (Set Management for this field). */
   onNewManagement: () => void;
@@ -166,14 +166,6 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           <Box data-tour="results-parameters">
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="overline" color="text.secondary" component="h2" sx={{ flex: 1 }}>Based on these parameters</Typography>
-              {/* Shows / hides only the results table below (same as the banner's "Results summary" button). */}
-              <Button
-                size="small" startIcon={tableOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                data-tour="results-table-toggle"
-                onClick={onToggleTable} aria-expanded={tableOpen} aria-controls="results-summary-table"
-              >
-                {tableOpen ? 'Hide results table' : 'Show results table'}
-              </Button>
             </Box>
             <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
               {params.map((p) => {
@@ -198,16 +190,26 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 return isChanged ? <Tooltip key={p.key} title={`Was: ${was}`} describeChild arrow>{item}</Tooltip> : item;
               })}
             </Box>
-            {/* Bottom row: what changed since the previous run (left) and "Run new management" (bottom right; not in the collapsible table). */}
+            {/* Bottom row: what changed since the previous run (left); "Run new management" and Show / Hide results table (bottom right; not in the collapsible table). */}
             <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2, flexWrap: 'wrap', mt: 0.75 }}>
               <Typography variant="caption" color="text.secondary" sx={{ flex: 1, minWidth: 200 }}>
                 {prev && (changed.length
                   ? <>Highlighted: {changed.length} parameter{changed.length > 1 ? 's' : ''} changed since “{prev.name}”, the previous run at this field (hover for the old value).</>
                   : <>Same parameters as “{prev.name}”, the previous run at this field.</>)}
               </Typography>
-              <Button data-tour="run-new-management" variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={onNewManagement} aria-haspopup="dialog" sx={{ ml: 'auto' }}>
-                Run new management
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: 'auto' }}>
+                <Button data-tour="run-new-management" variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={onNewManagement} aria-haspopup="dialog">
+                  Run new management
+                </Button>
+                {/* Shows / hides only the results table below. */}
+                <Button
+                  variant="outlined" startIcon={tableOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  data-tour="results-table-toggle"
+                  onClick={onToggleTable} aria-expanded={tableOpen} aria-controls="results-summary-table"
+                >
+                  {tableOpen ? 'Hide results table' : 'Show results table'}
+                </Button>
+              </Box>
             </Box>
           </Box>
 
