@@ -13,7 +13,8 @@
  *   measure's direction, e.g. lowest leaching, highest yield) is shaded in the
  *   goal's colour; ties shade every tied run; two goals split the cell.
  * - "What's different" lists the parameters that are not the same in all runs;
- *   hovering or focusing a run's column header shows all its parameters.
+ *   hovering or focusing a run's column header shows all the runs' parameters
+ *   side by side, differences in lime.
  *
  * Numbers come from the same mock summaries as the Results summary table.
  * Full-screen on phones.
@@ -131,38 +132,70 @@ export default function CompareRunsDialog({ run, runs, open, onClose }: Props) {
     return () => { offFocus(); offBlur(); };
   }, [ready, apiRef]);
 
+  /**
+   * Tooltip body for a run header: every compared run's parameters side by side
+   * (the hovered run's column is emphasised); parameters that differ between
+   * the runs are in MSU Lime.
+   */
+  const ParamsTable = ({ focus }: { focus: number }) => (
+    <Box sx={{ py: 0.5 }}>
+      <Box component="table" sx={{ borderCollapse: 'collapse', fontSize: '0.75rem', lineHeight: 1.35, '& th, & td': { textAlign: 'left', verticalAlign: 'top', px: 0.75, py: 0.1 } }}>
+        <thead>
+          <tr>
+            <th />
+            {picked.map((r, j) => (
+              <Box component="th" key={r.id} sx={{ fontWeight: 800, opacity: j === focus ? 1 : 0.75, borderBottom: j === focus ? `2px solid ${tokens.color.limeGreen}` : '2px solid transparent' }}>
+                Run {LETTERS[j]}
+                <Box component="span" sx={{ display: 'block', fontWeight: 600, fontSize: '0.75rem', opacity: 0.85, maxWidth: 220, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{r.name}</Box>
+              </Box>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {params[0].map((p, i) => {
+            const differs = diffKeys.has(p.label);
+            return (
+              <tr key={p.key}>
+                <Box component="th" scope="row" sx={{ fontWeight: 600, opacity: 0.85, whiteSpace: 'nowrap' }}>{p.label}</Box>
+                {picked.map((r, j) => (
+                  <Box component="td" key={r.id} sx={{ color: differs ? tokens.color.limeGreen : 'inherit', fontWeight: differs ? 800 : j === focus ? 600 : 400 }}>
+                    {params[j][i].value}
+                  </Box>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </Box>
+      {diffKeys.size > 0 && (
+        <Box sx={{ mt: 0.75, fontSize: '0.75rem' }}>
+          <Box component="span" sx={{ color: tokens.color.limeGreen, fontWeight: 800 }}>Lime</Box> = differs between the runs
+        </Box>
+      )}
+    </Box>
+  );
+
+  // Header tall enough for the longest run name to wrap in full (rough characters-per-line by column width).
+  const charsPerLine = phone ? 11 : picked.length > 3 ? 18 : picked.length > 2 ? 26 : 40;
+  const nameLines = Math.max(1, ...picked.map((r) => Math.ceil(r.name.length / charsPerLine)));
+  const headerHeight = Math.max(56, 40 + nameLines * 17);
+
   const columns: GridColDef<CompareRow>[] = [
     { field: 'metric', headerName: `${statLabel} value`, flex: 2, minWidth: phone ? 140 : 200, sortable: false, cellClassName: 'summary-metric' },
     ...picked.map((r, k): GridColDef<CompareRow> => ({
       field: LETTERS[k], type: 'number', headerClassName: 'run-head', flex: 1, minWidth: phone ? 96 : 130, sortable: false,
       headerName: `${LETTERS[k]} · ${r.name}`,
-      // Hover or keyboard-focus the header to see this run's parameters (ones that differ in bold); shown above the header (flips below when there is no room) so the results stay visible.
+      // Hover or keyboard-focus the header to see every compared run's parameters (differences in lime); shown above the header (flips below when there is no room) so the results stay visible.
       renderHeader: () => (
         <Tooltip
           open={headerTip === LETTERS[k]} onOpen={() => setHeaderTip(LETTERS[k])} onClose={() => setHeaderTip((t) => (t === LETTERS[k] ? null : t))}
           arrow placement="top" describeChild
-          slotProps={{ tooltip: { sx: { maxWidth: 340 } } }}
-          title={
-            <Box sx={{ py: 0.5 }}>
-              <Box sx={{ fontWeight: 800, mb: 0.25 }}>Run {LETTERS[k]} · {r.name}</Box>
-              <Box sx={{ opacity: 0.85, mb: 0.75 }}>{r.placeName}</Box>
-              <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-                {params[k].map((p) => {
-                  const differs = diffKeys.has(p.label);
-                  return (
-                    <Box component="li" key={p.key} sx={{ fontWeight: differs ? 800 : 400 }}>
-                      {p.label}: {p.value}{differs ? ' •' : ''}
-                    </Box>
-                  );
-                })}
-              </Box>
-              {diffKeys.size > 0 && <Box sx={{ mt: 0.75, opacity: 0.85, fontSize: '0.75rem' }}>• differs between the runs</Box>}
-            </Box>
-          }
+          slotProps={{ tooltip: { sx: { maxWidth: 'min(92vw, 720px)' } } }}
+          title={<ParamsTable focus={k} />}
         >
           <Box sx={{ lineHeight: 1.2, textAlign: 'right', overflow: 'hidden', cursor: 'help', width: '100%' }}>
             <Box component="span" sx={{ fontWeight: 800, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>Run {LETTERS[k]}</Box>
-            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.name}</Box>
+            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, opacity: 0.85, whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.25 }}>{r.name}</Box>
           </Box>
         </Tooltip>
       ),
@@ -237,13 +270,14 @@ export default function CompareRunsDialog({ run, runs, open, onClose }: Props) {
             disableColumnMenu
             disableRowSelectionOnClick
             showToolbar
-            columnHeaderHeight={52}
+            columnHeaderHeight={headerHeight}
             getRowHeight={() => 'auto'}
             aria-label={`Compare runs: ${statLabel.toLowerCase()} of each measure`}
             sx={{
               flexShrink: 0, // full height inside the scrolling dialog (phones)
               // Run headers: the hover area for the parameters tooltip fills the whole header cell.
-              '& .run-head .MuiDataGrid-columnHeaderTitleContainer, & .run-head .MuiDataGrid-columnHeaderTitleContainerContent': { flex: 1, width: '100%' },
+              '& .run-head .MuiDataGrid-columnHeaderTitleContainer, & .run-head .MuiDataGrid-columnHeaderTitleContainerContent': { flex: 1, width: '100%', overflow: 'visible', whiteSpace: 'normal', lineHeight: 'normal' },
+              '& .run-head .MuiDataGrid-columnHeaderDraggableContainer': { alignItems: 'flex-start', pt: 0.75 },
               '& .MuiDataGrid-cell': { py: 0.75, bgcolor: alpha(GREEN, dark ? 0.25 : 0.05) },
               '& .MuiDataGrid-cell.summary-metric': { bgcolor: alpha(GREEN, dark ? 0.55 : 0.16), fontWeight: 700 },
               '& .MuiDataGrid-columnHeader, & .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller--header': { bgcolor: `${GREEN} !important`, color: '#fff' },
