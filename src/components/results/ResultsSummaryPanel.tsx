@@ -24,6 +24,8 @@ import { useElementWidth } from '../../hooks/useElementWidth';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TuneIcon from '@mui/icons-material/Tune';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import CompareRunsDialog from './CompareRunsDialog';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import type { Run, RunResults } from '../../types';
 import { useAppTheme } from '../../theme/chrome';
@@ -33,6 +35,8 @@ import { useUnits } from '../../state/UnitsContext';
 import { inputToDisplay, inputUnit, nRateText, type UnitSystem } from '../../theme/units';
 import { MATURITY, MONTHS, TILLAGE, productLabel, soilDepthLabel } from '../../data/options';
 import { summaryRows, yearlyMetrics, type SummaryRow } from '../../data/resultsSummary';
+import GoalFilter from './GoalFilter';
+import { FILTERS_KEY, GOALS, STAT_COLUMNS, fmt, goalBackground, load, rowGoals, save, type GoalKey, type StatKey } from './summaryShared';
 
 interface Props {
   run: Run;
@@ -92,15 +96,6 @@ export function previousRunAtField(run: Run, runs: Run[]): Run | undefined {
 /** Accent for the table's shading (Spartan Green tints). */
 const GREEN = tokens.color.spartanGreen;
 
-/** The statistics columns, in table order (also the Cards view's "Show" filter). */
-const STAT_COLUMNS = [
-  { key: 'best', label: 'Best' },
-  { key: 'avg', label: 'Average' },
-  { key: 'median', label: 'Median' },
-  { key: 'worst', label: 'Worst' },
-  { key: 'total', label: 'Total' },
-] as const;
-type StatKey = (typeof STAT_COLUMNS)[number]['key'];
 type SummaryView = 'table' | 'cards';
 const VIEW_KEY = 'salus-online.resultsSummaryView.v1';
 const STAT_KEY = 'salus-online.resultsSummaryStat.v1';
@@ -109,25 +104,6 @@ const DEFAULT_STAT: StatKey = 'avg';
 /** Narrowest width the table fits in without side-scrolling (its columns' minimum widths + borders); narrower → Cards. */
 const TABLE_MIN_WIDTH = 230 + 5 * 96 + 2;
 
-/**
- * "Filter results" goals. Turning one on shades the winning cell (the Best
- * value; Average or Total when a measure has no Best) of every measure that
- * counts for that goal, in the goal's colour. A cell that wins for two goals
- * is split half-and-half between both colours.
- */
-const GOALS = [
-  { key: 'agro', label: 'Best Agronomic', color: '#43A047' },
-  { key: 'econ', label: 'Best Economic', color: '#1E88E5' },
-  { key: 'env', label: 'Best Environmental', color: '#E53935' },
-] as const;
-type GoalKey = (typeof GOALS)[number]['key'];
-const FILTERS_KEY = 'salus-online.resultsFilters.v1';
-/** Which goals each measure counts for (by SUMMARY_ROWS id); every other measure is Environmental only. */
-const ROW_GOALS: Record<string, GoalKey[]> = {
-  yield: ['agro', 'econ'], nue: ['agro', 'econ'], nfe: ['agro', 'econ'],
-  et: ['agro'], wue: ['agro'], hot: ['agro'],
-};
-const rowGoals = (id: string): GoalKey[] => ROW_GOALS[id] ?? ['env'];
 /** The statistic that "wins" in a row: Best if it has one, else Average, else Total. */
 function winningStat(r: SummaryRow): StatKey | null {
   return r.best !== null ? 'best' : r.avg !== null ? 'avg' : r.total !== null ? 'total' : null;
@@ -138,28 +114,8 @@ function cellGoals(r: SummaryRow, stat: StatKey, active: GoalKey[]): GoalKey[] {
   const goals = rowGoals(r.id);
   return GOALS.map((g) => g.key).filter((k) => goals.includes(k) && active.includes(k));
 }
-/** Cell background for 1 or 2 winning goals (2 = left half / right half). */
-function goalBackground(goals: GoalKey[], a: number): string {
-  const col = (k: GoalKey) => alpha(GOALS.find((g) => g.key === k)!.color, a);
-  if (goals.length === 1) return col(goals[0]);
-  return `linear-gradient(90deg, ${col(goals[0])} 50%, ${col(goals[1])} 50%)`;
-}
 
-/** Reads a remembered choice (browser storage may be blocked or hold old data). */
-function load<T>(key: string, ok: (v: unknown) => v is T, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    const v: unknown = raw ? JSON.parse(raw) : undefined;
-    return ok(v) ? v : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function save(key: string, v: unknown) {
-  try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage blocked: choice lasts this visit */ }
-}
 
-const fmt = (v: number | null) => (v === null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onToggleTable, onNewManagement }: Props) {
   const theme = useAppTheme();
@@ -188,6 +144,8 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
     return [[`& .MuiDataGrid-cell.win-${c.join('-')}`, bg], [`& .MuiDataGrid-row:hover .MuiDataGrid-cell.win-${c.join('-')}`, bg]];
   }));
 
+  // "Compare with another run" pop-up.
+  const [compareOpen, setCompareOpen] = useState(false);
   const params = runParameters(run, units);
   const prev = previousRunAtField(run, runs);
   const prevParams = prev ? new Map(runParameters(prev, units).map((p) => [p.key, p.value])) : undefined;
@@ -252,6 +210,10 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
                 <Button data-tour="run-new-management" variant="contained" color="secondary" startIcon={<TuneIcon />} onClick={onNewManagement} aria-haspopup="dialog">
                   Run new management
                 </Button>
+                {/* Side-by-side results of this run and others (CompareRunsDialog). */}
+                <Button data-tour="compare-runs" variant="outlined" startIcon={<CompareArrowsIcon />} onClick={() => setCompareOpen(true)} aria-haspopup="dialog">
+                  Compare with another run
+                </Button>
                 {/* Shows / hides only the results table below. */}
                 <Button
                   variant="outlined" startIcon={tableOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -268,28 +230,7 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           <Collapse in={tableOpen} unmountOnExit id="results-summary-table">
           <Box>
             {/* Filter results: shade the winning value of each measure for the chosen goals (green / blue / red). */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
-              <Typography id="summary-filter-label" variant="body2" sx={{ fontWeight: 600 }}>Filter results:</Typography>
-              <ToggleButtonGroup
-                size="small" value={goals} aria-labelledby="summary-filter-label" sx={{ flexWrap: 'wrap', gap: 0.5 }}
-                onChange={(_, v: GoalKey[]) => chooseGoals(GOALS.map((g) => g.key).filter((k) => v.includes(k)))}
-              >
-                {GOALS.map((g) => (
-                  <ToggleButton
-                    key={g.key} value={g.key}
-                    sx={{
-                      gap: 0.75,
-                      '&.Mui-selected, &.Mui-selected:hover': { bgcolor: g.color, borderColor: g.color, color: '#fff' },
-                      // the theme's ✓ on selected toggles; the colour dot is enough here
-                      '&.Mui-selected::before': { display: 'none' },
-                    }}
-                  >
-                    <Box component="span" aria-hidden sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: g.color, border: '1.5px solid #fff', flexShrink: 0 }} />
-                    {g.label}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Box>
+            <GoalFilter value={goals} onChange={chooseGoals} sx={{ mb: 1.5 }} />
             {/* Narrow panel only (the table would need side-scrolling): Table or Cards, then one statistic to show on the cards. */}
             {small && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
@@ -368,6 +309,8 @@ export default function ResultsSummaryPanel({ run, runs, data, tableOpen, onTogg
           </Collapse>
         </Box>
       </Box>
+      {/* Mounted only while open so it starts from this run each time. */}
+      {compareOpen && <CompareRunsDialog run={run} runs={runs} open onClose={() => setCompareOpen(false)} />}
     </ThemeProvider>
   );
 }
